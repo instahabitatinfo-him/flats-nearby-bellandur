@@ -18,6 +18,7 @@ type Property = {
   brokerage_amount: number | null;
   brokerage_negotiable: boolean;
   maintenance: number | null;
+  ad_type: "Owner" | "Broker";
   address: string | null;
   latitude: number;
   longitude: number;
@@ -32,9 +33,16 @@ type PropertyPhoto = {
   sort_order: number;
 };
 
+type PropertyVideo = {
+  id: number;
+  property_id: number;
+  video_url: string;
+};
+
 type PropertyWithPhoto = Property & {
   photoUrl: string | null;
   photoCount: number;
+  videoCount: number;
 };
 
 const PHOTO_BUCKET = "property-photos";
@@ -92,6 +100,10 @@ export default function Home() {
   const [listingFilter, setListingFilter] = useState<
   "Rent" | "Sale" | null
 >(null);
+
+  const [postedByFilter, setPostedByFilter] = useState<
+    "Owner" | "Broker" | null
+  >(null);
 
   const [sortBy, setSortBy] = useState<
     "newest" | "nearest" | "price_low" | "price_high"
@@ -171,6 +183,8 @@ export default function Home() {
             propertyData.map((property) => ({
               ...property,
               photoUrl: null,
+              photoCount: 0,
+              videoCount: 0,
             }))
           );
 
@@ -179,10 +193,26 @@ export default function Home() {
 
         const photos = (photoData || []) as PropertyPhoto[];
 
+        const { data: videoData, error: videoError } =
+          await supabase
+            .from("property_videos")
+            .select("id, property_id, video_url")
+            .in("property_id", propertyIds);
+
+        if (videoError) {
+          console.error("VIDEO LOAD ERROR:", videoError);
+        }
+
+        const videos = (videoData || []) as PropertyVideo[];
+
         const propertiesWithPhotos = propertyData.map(
           (property) => {
             const propertyPhotos = photos.filter(
               (photo) => photo.property_id === property.id
+            );
+
+            const propertyVideos = videos.filter(
+              (video) => video.property_id === property.id
             );
 
             const firstPhoto = propertyPhotos[0];
@@ -191,6 +221,7 @@ export default function Home() {
               ...property,
               photoUrl: firstPhoto?.photo_url || null,
               photoCount: propertyPhotos.length,
+              videoCount: propertyVideos.length,
             };
           }
         );
@@ -227,6 +258,13 @@ export default function Home() {
     if (
       listingFilter !== null &&
       property.listing_type !== listingFilter
+    ) {
+      return false;
+    }
+
+    if (
+      postedByFilter !== null &&
+      property.ad_type !== postedByFilter
     ) {
       return false;
     }
@@ -405,24 +443,44 @@ export default function Home() {
             Available Flats
           </h2>
 
-          <select
-            value={sortBy}
-            onChange={(event) =>
-              setSortBy(
-                event.target.value as
-                  | "newest"
-                  | "nearest"
-                  | "price_low"
-                  | "price_high"
-              )
-            }
-            className="text-xs bg-white border rounded-lg px-2 py-2 text-gray-700"
-          >
-            <option value="nearest">Nearest first</option>
-            <option value="newest">Newest</option>
-            <option value="price_low">Price: Low to High</option>
-            <option value="price_high">Price: High to Low</option>
-          </select>
+          <div className="flex items-center gap-2">
+            <select
+              value={postedByFilter ?? ""}
+              onChange={(event) => {
+                const value = event.target.value;
+
+                setPostedByFilter(
+                  value === "Owner" || value === "Broker"
+                    ? value
+                    : null
+                );
+              }}
+              className="text-xs bg-white border rounded-lg px-2 py-2 text-gray-700"
+            >
+              <option value="">Posted by: All</option>
+              <option value="Owner">Posted by: Owner</option>
+              <option value="Broker">Posted by: Broker</option>
+            </select>
+
+            <select
+              value={sortBy}
+              onChange={(event) =>
+                setSortBy(
+                  event.target.value as
+                    | "newest"
+                    | "nearest"
+                    | "price_low"
+                    | "price_high"
+                )
+              }
+              className="text-xs bg-white border rounded-lg px-2 py-2 text-gray-700"
+            >
+              <option value="nearest">Nearest first</option>
+              <option value="newest">Newest</option>
+              <option value="price_low">Price: Low to High</option>
+              <option value="price_high">Price: High to Low</option>
+            </select>
+          </div>
         </div>
 
         <div className="text-xs text-gray-500 mb-3">
@@ -496,9 +554,20 @@ export default function Home() {
                     </div>
                   )}
 
-                  {property.photoCount > 0 && (
-                    <div className="absolute bottom-3 right-3 bg-black/70 text-white px-2.5 py-1 rounded-full text-xs">
-                      📷 {property.photoCount}
+                  {(property.photoCount > 0 ||
+                    property.videoCount > 0) && (
+                    <div className="absolute bottom-3 right-3 bg-black/70 text-white px-2.5 py-1 rounded-full text-xs flex items-center gap-2">
+                      {property.photoCount > 0 && (
+                        <span>
+                          📷 {property.photoCount}
+                        </span>
+                      )}
+
+                      {property.videoCount > 0 && (
+                        <span>
+                          🎥 {property.videoCount}
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -593,7 +662,8 @@ export default function Home() {
                         </p>
                       )}
 
-                    {property.brokerage_amount != null &&
+                    {property.ad_type === "Broker" &&
+                      property.brokerage_amount != null &&
                       Number(property.brokerage_amount) > 0 && (
                         <p className="text-xs font-bold text-gray-700 mt-1">
                           Brokerage : ₹

@@ -15,6 +15,12 @@ type PropertyPhoto = {
   sort_order: number;
 };
 
+type PropertyVideo = {
+  id: number;
+  property_id: number;
+  video_url: string;
+};
+
 export default async function PropertyPage({
   params,
 }: PropertyPageProps) {
@@ -57,6 +63,18 @@ export default async function PropertyPage({
   }
 
   const propertyPhotos = (photos || []) as PropertyPhoto[];
+
+  const { data: videoData, error: videoError } = await supabase
+    .from("property_videos")
+    .select("id, property_id, video_url")
+    .eq("property_id", property.id)
+    .maybeSingle();
+
+  if (videoError) {
+    console.error("PROPERTY VIDEO LOAD ERROR:", videoError);
+  }
+
+  const propertyVideo = videoData as PropertyVideo | null;
 
   const mainPhoto = propertyPhotos[0]?.photo_url || null;
 
@@ -101,6 +119,26 @@ export default async function PropertyPage({
             photos={propertyPhotos}
             title={property.title}
           />
+        )}
+
+        {propertyVideo?.video_url && (
+          <div className="px-5 pt-5">
+            <div className="bg-white rounded-2xl border p-4">
+              <h2 className="font-semibold text-gray-900 mb-3">
+                Property Video
+              </h2>
+
+              <video
+                src={propertyVideo.video_url}
+                controls
+                playsInline
+                preload="metadata"
+                className="w-full rounded-xl bg-black"
+              >
+                Your browser does not support video playback.
+              </video>
+            </div>
+          </div>
         )}
 
         <div className="px-5 py-6">

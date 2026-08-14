@@ -30,6 +30,7 @@ const [showLocationOptions, setShowLocationOptions] = useState(false);
 const [showLocationMap, setShowLocationMap] = useState(false);
 
 const [listingType, setListingType] = useState<"Rent" | "Sale">("Rent");
+const [adType, setAdType] = useState<"Owner" | "Broker">("Broker");
 
 const [photos, setPhotos] = useState<File[]>([]);
 const [video, setVideo] = useState<File | null>(null);
@@ -317,6 +318,10 @@ try {
     formData.get("property_type") || ""
   );
 
+  const adTypeValue = String(
+    formData.get("ad_type") || "Broker"
+  ) as "Owner" | "Broker";
+
   const bhk = Number(formData.get("bhk") || 0);
   const rent = Number(formData.get("rent") || 0);
 
@@ -424,8 +429,15 @@ try {
       p_broker_name: brokerName,
       p_broker_phone: phone,
       p_broker_whatsapp: whatsapp,
-      p_brokerage_amount: brokerageAmount,
-      p_brokerage_negotiable: brokerageNegotiable,
+      p_brokerage_amount:
+        adTypeValue === "Broker"
+          ? brokerageAmount
+          : 0,
+      p_brokerage_negotiable:
+        adTypeValue === "Broker"
+          ? brokerageNegotiable
+          : true,
+      p_ad_type: adTypeValue,
     });
 
   if (insertError) {
@@ -759,6 +771,26 @@ List Property </h1>
         </div>
       </div>
 
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Ad Type
+        </label>
+
+        <select
+          name="ad_type"
+          value={adType}
+          onChange={(event) =>
+            setAdType(
+              event.target.value as "Owner" | "Broker"
+            )
+          }
+          className="w-full text-gray-900 border rounded-xl px-4 py-3"
+        >
+          <option value="Owner">Owner</option>
+          <option value="Broker">Broker</option>
+        </select>
+      </div>
+
       {listingType === "Rent" && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -779,50 +811,52 @@ List Property </h1>
         </div>
       )}
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Brokerage
-        </label>
+      {adType === "Broker" && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Brokerage
+          </label>
 
-        <input
-          name="brokerage_amount"
-          type="number"
-          min="0"
-          required
-          placeholder="25000"
-          className="w-full text-gray-900 border rounded-xl px-4 py-3"
-        />
+          <input
+            name="brokerage_amount"
+            type="number"
+            min="0"
+            required
+            placeholder="25000"
+            className="w-full text-gray-900 border rounded-xl px-4 py-3"
+          />
 
-        <p className="text-xs text-gray-500 mt-2">
-          For rental properties, this is usually one month's rent.
-        </p>
+          <p className="text-xs text-gray-500 mt-2">
+            For rental properties, this is usually one month's rent.
+          </p>
 
-        <div className="grid grid-cols-2 gap-3 mt-3">
-          <button
-            type="button"
-            onClick={() => setBrokerageNegotiable(true)}
-            className={
-              brokerageNegotiable
-                ? "bg-black text-white rounded-xl px-4 py-3 font-semibold"
-                : "bg-white border rounded-xl px-4 py-3 font-semibold text-gray-700"
-            }
-          >
-            Negotiable
-          </button>
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            <button
+              type="button"
+              onClick={() => setBrokerageNegotiable(true)}
+              className={
+                brokerageNegotiable
+                  ? "bg-black text-white rounded-xl px-4 py-3 font-semibold"
+                  : "bg-white border rounded-xl px-4 py-3 font-semibold text-gray-700"
+              }
+            >
+              Negotiable
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setBrokerageNegotiable(false)}
-            className={
-              !brokerageNegotiable
-                ? "bg-black text-white rounded-xl px-4 py-3 font-semibold"
-                : "bg-white border rounded-xl px-4 py-3 font-semibold text-gray-700"
-            }
-          >
-            Non-negotiable
-          </button>
+            <button
+              type="button"
+              onClick={() => setBrokerageNegotiable(false)}
+              className={
+                !brokerageNegotiable
+                  ? "bg-black text-white rounded-xl px-4 py-3 font-semibold"
+                  : "bg-white border rounded-xl px-4 py-3 font-semibold text-gray-700"
+              }
+            >
+              Non-negotiable
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -943,7 +977,7 @@ List Property </h1>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Broker name
+          {adType === "Owner" ? "Owner name" : "Broker name"}
         </label>
 
         <input
