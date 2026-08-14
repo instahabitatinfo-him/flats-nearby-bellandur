@@ -5,6 +5,13 @@ import { supabase } from "@/lib/supabase";
 import dynamic from "next/dynamic";
 
 const MAX_PHOTOS = 12;
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
+const ALLOWED_VIDEO_TYPES = [
+  "video/mp4",
+  "video/webm",
+];
+
+
 
 const PropertyLocationMap = dynamic(
   () => import("@/components/PropertyLocationMap"),
@@ -25,7 +32,9 @@ const [showLocationMap, setShowLocationMap] = useState(false);
 const [listingType, setListingType] = useState<"Rent" | "Sale">("Rent");
 
 const [photos, setPhotos] = useState<File[]>([]);
+const [video, setVideo] = useState<File | null>(null);
 const [uploadProgress, setUploadProgress] = useState(0);
+const [videoUploadProgress, setVideoUploadProgress] = useState(0);
 const [brokerageNegotiable, setBrokerageNegotiable] = useState(true);
 
 function getPropertyLocation() {
@@ -137,6 +146,87 @@ if (oversizedFile) {
 
 setPhotos(selectedFiles);
 
+}
+
+function handleVideoChange(event: ChangeEvent<HTMLInputElement>) {
+  const selectedVideo = event.target.files?.[0] || null;
+
+  setError("");
+
+  if (!selectedVideo) {
+    setVideo(null);
+    return;
+  }
+
+  if (!ALLOWED_VIDEO_TYPES.includes(selectedVideo.type)) {
+    setError("Please select an MP4 or WebM video.");
+    setVideo(null);
+    event.target.value = "";
+    return;
+  }
+
+  if (selectedVideo.size > MAX_VIDEO_SIZE) {
+    setError("Video is larger than 100 MB. Please choose a smaller video.");
+    setVideo(null);
+    event.target.value = "";
+    return;
+  }
+
+  setVideo(selectedVideo);
+}
+
+async function uploadVideo(
+  file: File,
+  propertyId: number
+) {
+  const fileExtension =
+    file.name.split(".").pop()?.toLowerCase() || "mp4";
+
+  const uniqueName =
+    `${Date.now()}-${crypto.randomUUID()}.${fileExtension}`;
+
+  const filePath = `${propertyId}/video-${uniqueName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("property-photos")
+    .upload(filePath, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.type,
+    });
+
+  if (uploadError) {
+    throw new Error(
+      `Failed to upload video: ${uploadError.message}`
+    );
+  }
+
+  const { data } = supabase.storage
+    .from("property-photos")
+    .getPublicUrl(filePath);
+
+  const publicUrl = data.publicUrl;
+
+  if (!publicUrl) {
+    throw new Error(
+      "Unable to create public URL for video."
+    );
+  }
+
+  const { error: videoRowError } = await supabase
+    .from("property_videos")
+    .insert({
+      property_id: propertyId,
+      video_url: publicUrl,
+    });
+
+  if (videoRowError) {
+    throw new Error(
+      `Video was uploaded but could not be saved: ${videoRowError.message}`
+    );
+  }
+
+  setVideoUploadProgress(100);
 }
 
 async function uploadPhoto(
@@ -395,6 +485,12 @@ try {
     }
   }
 
+  if (video) {
+    setVideoUploadProgress(10);
+    await uploadVideo(video, property.id);
+    setVideoUploadProgress(100);
+  }
+
   setSubmitted(true);
 setSubmitted(true);} catch (caughtError) {
   console.error("PROPERTY SUBMISSION ERROR:", caughtError);
@@ -431,7 +527,9 @@ Property submitted </h1>
         onClick={() => {
           setSubmitted(false);
           setPhotos([]);
+          setVideo(null);
           setUploadProgress(0);
+          setVideoUploadProgress(0);
           setError("");
         }}
         className="mt-6 w-full bg-black text-white rounded-xl px-4 py-3 font-semibold"
@@ -910,6 +1008,31 @@ List Property </h1>
         )}
       </div>
 
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Property video
+        </label>
+
+        <input
+          name="video"
+          type="file"
+          accept="video/mp4,video/webm"
+          onChange={handleVideoChange}
+          disabled={saving}
+          className="w-full text-gray-900 border rounded-xl px-4 py-3"
+        />
+
+        <p className="text-xs text-gray-500 mt-2">
+          1 video only. MP4 or WebM. Maximum 100 MB.
+        </p>
+
+        {video && (
+          <p className="text-sm text-gray-600 mt-2">
+            Video selected: {video.name}
+          </p>
+        )}
+      </div>
+
       {saving && photos.length > 0 && (
         <div>
           <div className="flex justify-between text-sm text-gray-600 mb-2">
@@ -928,13 +1051,37 @@ List Property </h1>
         </div>
       )}
 
+      {saving && video && (
+        <div>
+          <div className="flex justify-between text-sm text-gray-600 mb-2">
+            <span>Uploading video...</span>
+            <span>{videoUploadProgress}%</span>
+          </div>
+
+          <div className="w-full text-gray-900 placeholder:text-gray-500 bg-gray-200 rounded-full h-2">
+            <div
+              className="bg-black h-2 rounded-full transition-all"
+              style={{
+                width: `${videoUploadProgress}%`,
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       <button
         type="submit"
         disabled={saving}
         className="w-full text-gray-900 placeholder:text-gray-500 bg-black text-white rounded-xl px-4 py-3 font-semibold disabled:opacity-50"
       >
         {saving
-          ? photos.length > 0
+          ? video
+            ? videoUploadProgress < 100
+              ? `Uploading video... ${videoUploadProgress}%`
+              : photos.length > 0
+              ? `Uploading... ${uploadProgress}%`
+              : "Submitting..."
+            : photos.length > 0
             ? `Uploading... ${uploadProgress}%`
             : "Submitting..."
           : "Submit Property"}
