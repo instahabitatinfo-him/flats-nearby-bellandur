@@ -17,6 +17,7 @@ type Property = {
   furnishing: string | null;
   brokerage_amount: number | null;
   brokerage_negotiable: boolean;
+  maintenance: number | null;
   address: string | null;
   latitude: number;
   longitude: number;
@@ -571,9 +572,12 @@ export default function Home() {
                   <div>
                     <p className="text-lg font-bold text-gray-900">
                       ₹
-                      {Number(property.price).toLocaleString(
-                        "en-IN"
-                      )}
+                      {(
+                        Number(property.price) +
+                        (property.listing_type === "Rent"
+                          ? Number(property.maintenance || 0)
+                          : 0)
+                      ).toLocaleString("en-IN")}
 
                       {property.listing_type === "Rent" && (
                         <span className="text-xs font-normal text-gray-500">
@@ -581,6 +585,13 @@ export default function Home() {
                         </span>
                       )}
                     </p>
+
+                    {property.listing_type === "Rent" &&
+                      Number(property.maintenance || 0) > 0 && (
+                        <p className="text-xs font-medium text-gray-600 -mt-1">
+                          *including Maintenance
+                        </p>
+                      )}
 
                     {property.brokerage_amount != null &&
                       Number(property.brokerage_amount) > 0 && (

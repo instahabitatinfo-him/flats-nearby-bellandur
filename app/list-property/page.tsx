@@ -2,8 +2,14 @@
 
 import { ChangeEvent, FormEvent, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import dynamic from "next/dynamic";
 
 const MAX_PHOTOS = 12;
+
+const PropertyLocationMap = dynamic(
+  () => import("@/components/PropertyLocationMap"),
+  { ssr: false }
+);
 
 export default function ListPropertyPage() {
 const [submitted, setSubmitted] = useState(false);
@@ -13,6 +19,8 @@ const [saving, setSaving] = useState(false);
 const [latitude, setLatitude] = useState<number | null>(null);
 const [longitude, setLongitude] = useState<number | null>(null);
 const [locationLoading, setLocationLoading] = useState(false);
+const [showLocationOptions, setShowLocationOptions] = useState(false);
+const [showLocationMap, setShowLocationMap] = useState(false);
 
 const [listingType, setListingType] = useState<"Rent" | "Sale">("Rent");
 
@@ -56,6 +64,34 @@ navigator.geolocation.getCurrentPosition(
   }
 );
 
+}
+
+function searchPropertyLocation() {
+  const form = document.querySelector("form");
+
+  if (!form) {
+    setError("Unable to read the property address.");
+    return;
+  }
+
+  const addressInput = form.querySelector(
+    '[name="address"]'
+  ) as HTMLTextAreaElement | null;
+
+  const address = addressInput?.value.trim();
+
+  if (!address) {
+    setError("Please enter the property address first.");
+    setShowLocationOptions(false);
+    return;
+  }
+
+  const mapsUrl =
+    "https://www.google.com/maps/search/?api=1&query=" +
+    encodeURIComponent(address);
+
+  window.open(mapsUrl, "_blank", "noopener,noreferrer");
+  setShowLocationOptions(false);
 }
 
 function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
@@ -194,6 +230,10 @@ try {
   const bhk = Number(formData.get("bhk") || 0);
   const rent = Number(formData.get("rent") || 0);
 
+  const maintenance = Number(
+    formData.get("maintenance") || 0
+  );
+
   const areaSqft = Number(formData.get("area_sqft") || 0);
 
   const furnishing = String(
@@ -278,6 +318,10 @@ try {
       p_listing_type: listingType,
       p_bhk: bhk,
       p_price: rent,
+      p_maintenance:
+        listingType === "Rent"
+          ? maintenance || 0
+          : 0,
       p_area_sqft: areaSqft || null,
       p_furnishing: furnishing || null,
       p_deposit: listingType === "Rent" ? deposit || null : null,
@@ -535,6 +579,26 @@ List Property </h1>
         />
       </div>
 
+      {listingType === "Rent" && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Maintenance
+          </label>
+
+          <input
+            name="maintenance"
+            type="number"
+            min="0"
+            placeholder="3000"
+            className="w-full text-gray-900 border rounded-xl px-4 py-3"
+          />
+
+          <p className="text-xs text-gray-500 mt-2">
+            Monthly maintenance, if applicable.
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -692,12 +756,12 @@ List Property </h1>
         />
       </div>
 
-      <div>
+      <div className="relative">
         <button
           type="button"
-          onClick={getPropertyLocation}
+          onClick={() => setShowLocationOptions(true)}
           disabled={locationLoading || saving}
-          className="w-full text-gray-900 placeholder:text-gray-500 border border-gray-300 rounded-xl px-4 py-3 font-semibold disabled:opacity-50"
+          className="w-full text-gray-900 border border-gray-300 rounded-xl px-4 py-3 font-semibold disabled:opacity-50"
         >
           {locationLoading
             ? "Getting Location..."
@@ -711,6 +775,71 @@ List Property </h1>
             Location: {latitude.toFixed(6)},{" "}
             {longitude.toFixed(6)}
           </p>
+        )}
+
+        {showLocationOptions && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+            <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Property Location
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Choose how you want to set the property location.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowLocationOptions(false)}
+                  className="text-gray-500 text-xl leading-none px-2"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLocationOptions(false);
+                    getPropertyLocation();
+                  }}
+                  disabled={locationLoading || saving}
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-left font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  📍 Locate Me
+                  <span className="block text-xs font-normal text-gray-500 mt-1">
+                    Use at property
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLocationOptions(false);
+                    setShowLocationMap(true);
+                  }}
+                  disabled={saving}
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-left font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  🗺️ Search in Maps
+                  <span className="block text-xs font-normal text-gray-500 mt-1">
+                    Find property
+                  </span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowLocationOptions(false)}
+                className="w-full mt-4 rounded-xl px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
@@ -810,6 +939,20 @@ List Property </h1>
             : "Submitting..."
           : "Submit Property"}
       </button>
+
+      {showLocationMap && (
+        <PropertyLocationMap
+          initialLatitude={latitude}
+          initialLongitude={longitude}
+          onClose={() => setShowLocationMap(false)}
+          onSelect={(selectedLatitude, selectedLongitude) => {
+            setLatitude(selectedLatitude);
+            setLongitude(selectedLongitude);
+            setShowLocationMap(false);
+            setError("");
+          }}
+        />
+      )}
     </form>
   </div>
 </main>

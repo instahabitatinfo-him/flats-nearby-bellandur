@@ -111,7 +111,7 @@ export default async function PropertyPage({
                 {property.title}
               </h1>
 
-              <p className="text-sm text-gray-500 mt-2">
+              <p className="text-sm text-gray-800 mt-2 font-medium">
                 📍 {property.address || "Nearby"}
               </p>
             </div>
@@ -146,30 +146,30 @@ export default async function PropertyPage({
 
             <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
               <div>
-                <p className="text-gray-500">Bedrooms</p>
-                <p className="font-medium">
+                <p className="text-gray-700 font-medium">Bedrooms</p>
+                <p className="font-semibold text-gray-900">
                   {property.bhk} BHK
                 </p>
               </div>
 
               <div>
-                <p className="text-gray-500">Property Type</p>
-                <p className="font-medium">
+                <p className="text-gray-700 font-medium">Property Type</p>
+                <p className="font-semibold text-gray-900">
                   {property.property_type || "Apartment"}
                 </p>
               </div>
 
               <div>
-                <p className="text-gray-500">Listing</p>
-                <p className="font-medium">
+                <p className="text-gray-700 font-medium">Listing</p>
+                <p className="font-semibold text-gray-900">
                   {property.listing_type}
                 </p>
               </div>
 
               {property.area_sqft && (
                 <div>
-                  <p className="text-gray-500">Area</p>
-                  <p className="font-medium">
+                  <p className="text-gray-700 font-medium">Area</p>
+                  <p className="font-semibold text-gray-900">
                     {property.area_sqft} sqft
                   </p>
                 </div>
@@ -177,8 +177,8 @@ export default async function PropertyPage({
 
               {property.furnishing && (
                 <div>
-                  <p className="text-gray-500">Furnishing</p>
-                  <p className="font-medium">
+                  <p className="text-gray-700 font-medium">Furnishing</p>
+                  <p className="font-semibold text-gray-900">
                     {property.furnishing}
                   </p>
                 </div>
@@ -186,8 +186,8 @@ export default async function PropertyPage({
 
               {property.floor != null && (
                 <div>
-                  <p className="text-gray-500">Floor</p>
-                  <p className="font-medium">
+                  <p className="text-gray-700 font-medium">Floor</p>
+                  <p className="font-semibold text-gray-900">
                     {property.total_floors != null
                       ? `${property.floor} of ${property.total_floors}`
                       : property.floor}
@@ -197,8 +197,8 @@ export default async function PropertyPage({
 
               {property.availability_date && (
                 <div>
-                  <p className="text-gray-500">Available From</p>
-                  <p className="font-medium">
+                  <p className="text-gray-700 font-medium">Available From</p>
+                  <p className="font-semibold text-gray-900">
                     {new Date(
                       `${property.availability_date}T00:00:00`
                     ).toLocaleDateString("en-IN", {
@@ -212,8 +212,8 @@ export default async function PropertyPage({
 
               {property.deposit && (
                 <div>
-                  <p className="text-gray-500">Deposit</p>
-                  <p className="font-medium">
+                  <p className="text-gray-700 font-medium">Deposit</p>
+                  <p className="text-gray-900 font-semibold">
                     ₹{Number(property.deposit).toLocaleString("en-IN")}
                   </p>
                 </div>
@@ -228,7 +228,7 @@ export default async function PropertyPage({
                 Description
               </h2>
 
-              <p className="text-sm text-gray-600 mt-2 leading-6 whitespace-pre-line">
+              <p className="text-sm text-gray-900 mt-2 leading-6 whitespace-pre-line">
                 {property.description}
               </p>
             </div>
@@ -240,20 +240,31 @@ export default async function PropertyPage({
               Location
             </h2>
 
-            <p className="text-sm text-gray-600 mt-2">
+            <p className="text-sm text-gray-900 mt-2">
               📍 {property.address || "Location available on request"}
             </p>
 
             {property.latitude != null &&
               property.longitude != null && (
-                <a
-                  href={`https://www.google.com/maps?q=${property.latitude},${property.longitude}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block text-center bg-gray-100 rounded-xl py-3 mt-4 text-sm font-medium"
-                >
-                  Open in Google Maps
-                </a>
+                <>
+                  <div className="mt-4 overflow-hidden rounded-xl border border-gray-200">
+                    <iframe
+                      title="Property location map"
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${property.longitude - 0.005}%2C${property.latitude - 0.005}%2C${property.longitude + 0.005}%2C${property.latitude + 0.005}&layer=mapnik&marker=${property.latitude}%2C${property.longitude}`}
+                      className="h-56 w-full border-0"
+                      loading="lazy"
+                    />
+                  </div>
+
+                  <a
+                    href={`https://www.google.com/maps?q=${property.latitude},${property.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-center bg-gray-900 text-white rounded-xl py-3 mt-4 text-sm font-semibold hover:bg-black"
+                  >
+                    Open in Google Maps
+                  </a>
+                </>
               )}
           </div>
 
@@ -263,7 +274,7 @@ export default async function PropertyPage({
               Contact Broker
             </h2>
 
-            <p className="text-sm text-gray-600 mt-2">
+            <p className="text-sm text-gray-900 mt-2">
               {property.broker_name || "Property Contact"}
             </p>
 
