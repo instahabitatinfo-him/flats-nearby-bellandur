@@ -427,7 +427,7 @@ List Property </h1>
           name="title"
           required
           placeholder="Beautiful 2 BHK Near Bellandur"
-          className="w-full border rounded-xl px-4 py-3"
+          className="w-full text-gray-900 border rounded-xl px-4 py-3"
         />
       </div>
 
@@ -440,7 +440,7 @@ List Property </h1>
           name="description"
           rows={4}
           placeholder="Describe the property..."
-          className="w-full border rounded-xl px-4 py-3"
+          className="w-full text-gray-900 border rounded-xl px-4 py-3"
         />
       </div>
 
@@ -485,7 +485,7 @@ List Property </h1>
           <select
             name="property_type"
             required
-            className="w-full border rounded-xl px-4 py-3"
+            className="w-full text-gray-900 border rounded-xl px-4 py-3"
           >
             <option value="">Select</option>
             <option value="Apartment">Apartment</option>
@@ -504,7 +504,7 @@ List Property </h1>
           <select
             name="bhk"
             required
-            className="w-full border rounded-xl px-4 py-3"
+            className="w-full text-gray-900 border rounded-xl px-4 py-3"
           >
             <option value="">Select</option>
             <option value="1">1 BHK</option>
@@ -531,7 +531,7 @@ List Property </h1>
               ? "25000"
               : "7500000"
           }
-          className="w-full border rounded-xl px-4 py-3"
+          className="w-full text-gray-900 border rounded-xl px-4 py-3"
         />
       </div>
 
@@ -546,7 +546,7 @@ List Property </h1>
             type="number"
             min="0"
             placeholder="5"
-            className="w-full border rounded-xl px-4 py-3"
+            className="w-full text-gray-900 border rounded-xl px-4 py-3"
           />
         </div>
 
@@ -560,7 +560,7 @@ List Property </h1>
             type="number"
             min="1"
             placeholder="12"
-            className="w-full border rounded-xl px-4 py-3"
+            className="w-full text-gray-900 border rounded-xl px-4 py-3"
           />
         </div>
       </div>
@@ -576,7 +576,7 @@ List Property </h1>
             type="number"
             min="0"
             placeholder="1200"
-            className="w-full border rounded-xl px-4 py-3"
+            className="w-full text-gray-900 border rounded-xl px-4 py-3"
           />
         </div>
 
@@ -587,7 +587,7 @@ List Property </h1>
 
           <select
             name="furnishing"
-            className="w-full border rounded-xl px-4 py-3"
+            className="w-full text-gray-900 border rounded-xl px-4 py-3"
           >
             <option value="">Select</option>
             <option value="Unfurnished">Unfurnished</option>
@@ -608,7 +608,7 @@ List Property </h1>
             type="number"
             min="0"
             placeholder="100000"
-            className="w-full border rounded-xl px-4 py-3"
+            className="w-full text-gray-900 border rounded-xl px-4 py-3"
           />
 
           <p className="text-xs text-gray-500 mt-2">
@@ -628,7 +628,7 @@ List Property </h1>
           min="0"
           required
           placeholder="25000"
-          className="w-full border rounded-xl px-4 py-3"
+          className="w-full text-gray-900 border rounded-xl px-4 py-3"
         />
 
         <p className="text-xs text-gray-500 mt-2">
@@ -670,7 +670,7 @@ List Property </h1>
         <input
           name="availability_date"
           type="date"
-          className="w-full border rounded-xl px-4 py-3"
+          className="w-full text-gray-900 border rounded-xl px-4 py-3"
         />
 
         <p className="text-xs text-gray-500 mt-2">
@@ -688,7 +688,7 @@ List Property </h1>
           required
           rows={3}
           placeholder="Enter the property address"
-          className="w-full border rounded-xl px-4 py-3"
+          className="w-full text-gray-900 border rounded-xl px-4 py-3"
         />
       </div>
 
@@ -697,7 +697,7 @@ List Property </h1>
           type="button"
           onClick={getPropertyLocation}
           disabled={locationLoading || saving}
-          className="w-full border border-gray-300 rounded-xl px-4 py-3 font-semibold disabled:opacity-50"
+          className="w-full text-gray-900 placeholder:text-gray-500 border border-gray-300 rounded-xl px-4 py-3 font-semibold disabled:opacity-50"
         >
           {locationLoading
             ? "Getting Location..."
@@ -723,7 +723,7 @@ List Property </h1>
           name="broker_name"
           required
           placeholder="Your broker name"
-          className="w-full border rounded-xl px-4 py-3"
+          className="w-full text-gray-900 border rounded-xl px-4 py-3"
         />
       </div>
 
@@ -737,7 +737,7 @@ List Property </h1>
           type="tel"
           required
           placeholder="Phone number"
-          className="w-full border rounded-xl px-4 py-3"
+          className="w-full text-gray-900 border rounded-xl px-4 py-3"
         />
       </div>
 
@@ -750,7 +750,7 @@ List Property </h1>
           name="whatsapp"
           type="tel"
           placeholder="WhatsApp number"
-          className="w-full border rounded-xl px-4 py-3"
+          className="w-full text-gray-900 border rounded-xl px-4 py-3"
         />
       </div>
 
@@ -766,7 +766,7 @@ List Property </h1>
           multiple
           onChange={handlePhotoChange}
           disabled={saving}
-          className="w-full border rounded-xl px-4 py-3"
+          className="w-full text-gray-900 border rounded-xl px-4 py-3"
         />
 
         <p className="text-xs text-gray-500 mt-2">
@@ -788,7 +788,7 @@ List Property </h1>
             <span>{uploadProgress}%</span>
           </div>
 
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full text-gray-900 placeholder:text-gray-500 bg-gray-200 rounded-full h-2">
             <div
               className="bg-black h-2 rounded-full transition-all"
               style={{
@@ -802,7 +802,7 @@ List Property </h1>
       <button
         type="submit"
         disabled={saving}
-        className="w-full bg-black text-white rounded-xl px-4 py-3 font-semibold disabled:opacity-50"
+        className="w-full text-gray-900 placeholder:text-gray-500 bg-black text-white rounded-xl px-4 py-3 font-semibold disabled:opacity-50"
       >
         {saving
           ? photos.length > 0

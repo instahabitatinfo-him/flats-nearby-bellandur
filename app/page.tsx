@@ -133,6 +133,12 @@ export default function Home() {
             .from("properties")
             .select("*")
             .eq("status", "approved")
+            .gte(
+              "created_at",
+              new Date(
+                Date.now() - 30 * 24 * 60 * 60 * 1000
+              ).toISOString()
+            )
             .order("created_at", { ascending: false });
 
         if (propertyError) {

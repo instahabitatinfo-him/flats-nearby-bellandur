@@ -45,7 +45,9 @@ export default function AdminPage() {
   const [password, setPassword] = useState("");
 
   const [properties, setProperties] = useState<Property[]>([]);
+  const [approvedProperties, setApprovedProperties] = useState<Property[]>([]);
   const [photos, setPhotos] = useState<PropertyPhoto[]>([]);
+  const [approvedPhotos, setApprovedPhotos] = useState<PropertyPhoto[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [loginLoading, setLoginLoading] = useState(false);
@@ -91,6 +93,46 @@ export default function AdminPage() {
     setPhotos(photoData || []);
   }
 
+  async function loadApprovedProperties() {
+    const { data, error: propertyError } = await supabase
+      .from("properties")
+      .select("*")
+      .eq("status", "approved")
+      .order("created_at", { ascending: false });
+
+    if (propertyError) {
+      setError(propertyError.message);
+      return;
+    }
+
+    const approved = (data || []) as Property[];
+
+    setApprovedProperties(approved);
+
+    if (approved.length === 0) {
+      setApprovedPhotos([]);
+      return;
+    }
+
+    const ids = approved.map(
+      (property: Property) => property.id
+    );
+
+    const { data: photoData, error: photoError } =
+      await supabase
+        .from("property_photos")
+        .select("*")
+        .in("property_id", ids)
+        .order("sort_order", { ascending: true });
+
+    if (photoError) {
+      setError(photoError.message);
+      return;
+    }
+
+    setApprovedPhotos(photoData || []);
+  }
+
   async function checkAdmin() {
     setLoading(true);
     setError("");
@@ -128,7 +170,11 @@ export default function AdminPage() {
     }
 
     setIsAdmin(true);
-    await loadPendingProperties();
+
+    await Promise.all([
+      loadPendingProperties(),
+      loadApprovedProperties(),
+    ]);
 
     setSessionReady(true);
     setLoading(false);
@@ -319,6 +365,50 @@ export default function AdminPage() {
         </div>
       </main>
     );
+  }
+
+  async function removeProperty(propertyId: number) {
+    const confirmed = window.confirm(
+      "Are you sure you want to remove this listing? This will also remove its photos."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setActionId(propertyId);
+
+    try {
+      const { error } = await supabase.rpc("remove_property", {
+        p_property_id: propertyId,
+      });
+
+      if (error) {
+        console.error("REMOVE PROPERTY ERROR:", error);
+        setError(`Unable to remove property: ${error.message}`);
+        return;
+      }
+
+      setProperties((current) =>
+        current.filter((property) => property.id !== propertyId)
+      );
+
+      setApprovedProperties((current) =>
+        current.filter((property) => property.id !== propertyId)
+      );
+
+      setPhotos((current) =>
+        current.filter((photo) => photo.property_id !== propertyId)
+      );
+
+      setApprovedPhotos((current) =>
+        current.filter((photo) => photo.property_id !== propertyId)
+      );
+
+      setMessage("Listing permanently removed.");
+    } finally {
+      setActionId(null);
+    }
   }
 
   return (
@@ -547,10 +637,156 @@ export default function AdminPage() {
                         : "Approve"}
                     </button>
                   </div>
+
                 </div>
               </div>
             );
           })}
+        </div>
+
+        <div className="mt-10">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">
+                Approved Properties
+              </h2>
+
+              <p className="text-sm text-gray-500">
+                {approvedProperties.length} properties currently visible on the homepage
+              </p>
+            </div>
+          </div>
+
+          {approvedProperties.length === 0 && (
+            <div className="bg-white rounded-2xl border p-8 text-center">
+              <p className="text-gray-500">
+                No approved properties.
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-5">
+            {approvedProperties.map((property) => {
+              const propertyPhotos = approvedPhotos.filter(
+                (photo) => photo.property_id === property.id
+              );
+
+              return (
+                <div
+                  key={property.id}
+                  className="bg-white rounded-2xl border overflow-hidden"
+                >
+                  {propertyPhotos.length > 0 && (
+                    <div className="grid grid-cols-3 gap-1 bg-gray-100">
+                      {propertyPhotos.slice(0, 6).map((photo) =>
+                        photo.photo_url ? (
+                          <img
+                            key={photo.id}
+                            src={photo.photo_url}
+                            alt={property.title}
+                            className="w-full h-32 object-cover"
+                          />
+                        ) : null
+                      )}
+                    </div>
+                  )}
+
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900">
+                          {property.title}
+                        </h3>
+
+                        <p className="text-sm text-gray-500 mt-1">
+                          {property.bhk} BHK · {property.property_type} ·{" "}
+                          {property.listing_type}
+                        </p>
+                      </div>
+
+                      <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
+                        Live
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 mt-5 text-sm">
+                      <div>
+                        <p className="text-gray-500">Price</p>
+                        <p className="font-semibold text-gray-900">
+                          ₹{Number(property.price).toLocaleString("en-IN")}
+                          {property.listing_type === "Rent" && "/month"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-gray-500">Brokerage</p>
+                        <p className="font-semibold text-gray-900">
+                          {property.brokerage_amount != null
+                            ? `₹${Number(
+                                property.brokerage_amount
+                              ).toLocaleString("en-IN")} (${
+                                property.brokerage_negotiable
+                                  ? "Negotiable"
+                                  : "Non-negotiable"
+                              })`
+                            : "Not provided"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-gray-500">Area</p>
+                        <p className="font-semibold text-gray-900">
+                          {property.area_sqft
+                            ? `${property.area_sqft} sqft`
+                            : "Not provided"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-gray-500">Furnishing</p>
+                        <p className="font-semibold text-gray-900">
+                          {property.furnishing || "Not provided"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="border-t mt-5 pt-5 space-y-3 text-sm">
+                      <div>
+                        <p className="text-gray-500">Address</p>
+                        <p className="font-medium text-gray-900">
+                          {property.address || "Not provided"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-gray-500">Broker</p>
+                        <p className="font-medium text-gray-900">
+                          {property.broker_name || "Not provided"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-gray-500">Phone</p>
+                        <p className="font-medium text-gray-900">
+                          {property.broker_phone || "Not provided"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => removeProperty(property.id)}
+                      disabled={actionId === property.id}
+                      className="w-full mt-6 border border-red-300 text-red-700 rounded-xl px-4 py-3 font-semibold hover:bg-red-50 disabled:opacity-50"
+                    >
+                      {actionId === property.id
+                        ? "Permanently Removing..."
+                        : "Remove Listing"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </main>
