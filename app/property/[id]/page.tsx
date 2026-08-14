@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import PhotoGallery from "./PhotoGallery";
 
 type PropertyPageProps = {
   params: Promise<{
@@ -96,33 +97,10 @@ export default async function PropertyPage({
 
         {/* Photo Gallery */}
         {propertyPhotos.length > 1 && (
-          <div className="bg-white px-4 py-4 border-b">
-            <div className="grid grid-cols-4 gap-2">
-              {propertyPhotos.map((photo, index) => (
-                <a
-                  key={photo.id}
-                  href={photo.photo_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block"
-                >
-                  <div className="h-20 rounded-lg overflow-hidden bg-gray-200 relative">
-                    <img
-                      src={photo.photo_url}
-                      alt={`${property.title} photo ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-
-                    {index === 0 && (
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] text-center py-0.5">
-                        Main
-                      </div>
-                    )}
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
+          <PhotoGallery
+            photos={propertyPhotos}
+            title={property.title}
+          />
         )}
 
         <div className="px-5 py-6">
