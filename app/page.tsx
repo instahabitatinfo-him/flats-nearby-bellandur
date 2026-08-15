@@ -96,10 +96,16 @@ export default function Home() {
   const [error, setError] = useState("");
 
   const [search, setSearch] = useState("");
+
+  const [propertyTypeFilter, setPropertyTypeFilter] = useState<
+    "Apartment" | "House" | "Villa" | "PG" | "Others" | null
+  >(null);
+
   const [bhkFilter, setBhkFilter] = useState<number | null>(null);
+
   const [listingFilter, setListingFilter] = useState<
-  "Rent" | "Sale" | null
->(null);
+    "Rent" | "Sale" | null
+  >(null);
 
   const [postedByFilter, setPostedByFilter] = useState<
     "Owner" | "Broker" | null
@@ -115,11 +121,18 @@ export default function Home() {
   } | null>(null);
 
   const [locationError, setLocationError] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [showBrandIntro, setShowBrandIntro] = useState(true);
 
-  useEffect(() => {
+  const requestLocation = () => {
     if (!navigator.geolocation) {
+      setLocationError(true);
+      setLocationLoading(false);
       return;
     }
+
+    setLocationError(false);
+    setLocationLoading(true);
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -127,12 +140,23 @@ export default function Home() {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         });
+        setLocationError(false);
+        setLocationLoading(false);
       },
       (locationError) => {
         console.warn("LOCATION ERROR:", locationError.message);
         setLocationError(true);
+        setLocationLoading(false);
       }
     );
+  };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setShowBrandIntro(false);
+    }, 2100);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -251,6 +275,13 @@ export default function Home() {
       }
     }
 
+    if (
+      propertyTypeFilter !== null &&
+      property.property_type !== propertyTypeFilter
+    ) {
+      return false;
+    }
+
     if (bhkFilter !== null && Number(property.bhk) !== bhkFilter) {
       return false;
     }
@@ -303,16 +334,134 @@ export default function Home() {
   });
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <>
+      {showBrandIntro && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-white pointer-events-none"
+          style={{
+            animation:
+              "homeeaseIntroExit 2.1s cubic-bezier(0.22, 1, 0.36, 1) forwards",
+          }}
+        >
+          <div
+            className="text-3xl sm:text-5xl font-extrabold tracking-tight text-blue-600 text-center px-6"
+            style={{
+              animation:
+                "homeeaseBrandMove 2.1s cubic-bezier(0.22, 1, 0.36, 1) forwards",
+            }}
+          >
+            <span
+              className="inline-block"
+              style={{
+                animation: "homeeaseWordPop 0.65s ease-out both",
+              }}
+            >
+              Find.
+            </span>{" "}
+            <span
+              className="inline-block"
+              style={{
+                animation: "homeeaseWordPop 0.65s ease-out 0.08s both",
+              }}
+            >
+              See.
+            </span>{" "}
+            <span
+              className="inline-block"
+              style={{
+                animation: "homeeaseWordPop 0.65s ease-out 0.16s both",
+              }}
+            >
+              Visit.
+            </span>{" "}
+            <span
+              className="inline-block"
+              style={{
+                animation: "homeeaseWordPop 0.65s ease-out 0.24s both",
+              }}
+            >
+              Move.
+            </span>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes homeeaseWordPop {
+          0% {
+            opacity: 0;
+            transform: translateY(18px) scale(0.72) rotateX(-20deg);
+            filter: blur(4px);
+          }
+
+          65% {
+            opacity: 1;
+            transform: translateY(-3px) scale(1.06) rotateX(0deg);
+            filter: blur(0);
+          }
+
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            filter: blur(0);
+          }
+        }
+
+        @keyframes homeeaseBrandMove {
+          0% {
+            transform: scale(1.45);
+            opacity: 1;
+          }
+
+          55% {
+            transform: scale(1.45);
+            opacity: 1;
+          }
+
+          100% {
+            transform: scale(0.5);
+            opacity: 0;
+          }
+        }
+
+        @keyframes homeeaseIntroExit {
+          0% {
+            opacity: 1;
+          }
+
+          78% {
+            opacity: 1;
+          }
+
+          100% {
+            opacity: 0;
+            visibility: hidden;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .homeeaseBrandMove,
+          .homeeaseWordPop,
+          .homeeaseIntroExit {
+            animation: none !important;
+          }
+        }
+      `}</style>
+
+      <main className="min-h-screen bg-gray-50">
       <header className="bg-white border-b">
         <div className="max-w-md mx-auto px-5 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">
-              Flats Near You
+            <h1 className="text-[28px] leading-none font-extrabold tracking-tight text-[#172033]">
+              HomeEase
             </h1>
 
-            <p className="text-xs text-gray-500">
-              Find available properties nearby
+            <p className="mt-2 text-[15px] leading-none font-bold tracking-wide text-[#2563EB]">
+              Find. See. Visit. Move.
+            </p>
+
+            <p className="mt-1.5 text-xs font-medium tracking-normal text-[#64748B]">
+              One place. for your Hassle-free house hunting.
             </p>
           </div>
 
@@ -337,7 +486,15 @@ export default function Home() {
       </header>
 
       <section className="max-w-md mx-auto px-5 py-6">
-        <div className="bg-blue-50 rounded-2xl p-4 mb-5">
+        <div
+          className={`w-full text-left bg-blue-50 rounded-2xl p-4 mb-5 ${
+            locationError
+              ? "cursor-pointer hover:bg-blue-100 active:bg-blue-100 transition"
+              : "cursor-default"
+          } ${
+            locationLoading ? "animate-pulse" : ""
+          }`}
+        >
           <p className="text-sm text-gray-500">
             📍 Your location
           </p>
@@ -347,16 +504,35 @@ export default function Home() {
               ? "Location detected"
               : locationError
               ? "Location unavailable"
-              : "Detecting location..."}
+              : "Find properties near you"}
           </h2>
 
           <p className="text-xs text-gray-500 mt-1">
             {userLocation
               ? "Properties are shown near you"
               : locationError
-              ? "Enable location access to see distances"
-              : "Finding properties near your location"}
+              ? "Allow location access to see distances"
+              : "Use your location to find nearby properties"}
           </p>
+
+          {!userLocation && (
+            <button
+              type="button"
+              onClick={requestLocation}
+              disabled={locationLoading}
+              className="mt-3 bg-blue-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-blue-700 active:bg-blue-800 disabled:opacity-60 transition"
+            >
+              {locationLoading
+                ? "Getting location..."
+                : "📍 Use my location"}
+            </button>
+          )}
+
+          {locationError && (
+            <p className="text-xs font-medium text-blue-600 mt-2">
+              Tap here to enable location
+            </p>
+          )}
         </div>
 
         <div className="bg-white rounded-xl border px-4 py-3 mb-4">
@@ -365,77 +541,70 @@ export default function Home() {
             placeholder="Search flats, areas..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            className="w-full outline-none text-sm"
+            className="w-full outline-none text-sm text-gray-900 placeholder:text-gray-500"
           />
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-3">
-          <button className="bg-gray-900 text-white px-4 py-2 rounded-full text-sm">
-            All
-          </button>
+          <select
+            value={propertyTypeFilter ?? ""}
+            onChange={(event) => {
+              const value = event.target.value;
 
-          <button
-            onClick={() => setBhkFilter(1)}
-            className={
-              bhkFilter === 1
-                ? "bg-gray-900 text-white px-4 py-2 rounded-full text-sm"
-                : "bg-white border px-4 py-2 rounded-full text-sm"
-            }
+              setPropertyTypeFilter(
+                value === "Apartment" ||
+                value === "House" ||
+                value === "Villa" ||
+                value === "PG" ||
+                value === "Others"
+                  ? value
+                  : null
+              );
+            }}
+            className="bg-white border rounded-lg px-3 py-2 text-sm text-gray-700"
           >
-            1 BHK
-          </button>
+            <option value="">Property Type: All</option>
+            <option value="Apartment">Apartment</option>
+            <option value="House">House</option>
+            <option value="Villa">Villa</option>
+            <option value="PG">PG</option>
+            <option value="Others">Others</option>
+          </select>
 
-          <button
-            onClick={() => setBhkFilter(2)}
-            className={
-              bhkFilter === 2
-                ? "bg-gray-900 text-white px-4 py-2 rounded-full text-sm"
-                : "bg-white border px-4 py-2 rounded-full text-sm"
-            }
+          <select
+            value={bhkFilter ?? ""}
+            onChange={(event) => {
+              const value = event.target.value;
+
+              setBhkFilter(value ? Number(value) : null);
+            }}
+            className="bg-white border rounded-lg px-3 py-2 text-sm text-gray-700"
           >
-            2 BHK
-          </button>
+            <option value="">BHK: All</option>
+            <option value="1">1 BHK</option>
+            <option value="2">2 BHK</option>
+            <option value="3">3 BHK</option>
+            <option value="4">4 BHK</option>
+            <option value="5">5 BHK</option>
+          </select>
 
-          <button
-            onClick={() => setBhkFilter(3)}
-            className={
-              bhkFilter === 3
-                ? "bg-gray-900 text-white px-4 py-2 rounded-full text-sm"
-                : "bg-white border px-4 py-2 rounded-full text-sm"
-            }
-          >
-            3 BHK
-          </button>
+          <select
+            value={listingFilter ?? ""}
+            onChange={(event) => {
+              const value = event.target.value;
 
-          <button
-            onClick={() =>
               setListingFilter(
-                listingFilter === "Rent" ? null : "Rent"
-              )
-            }
-            className={
-              listingFilter === "Rent"
-                ? "bg-gray-900 text-white px-4 py-2 rounded-full text-sm"
-                : "bg-white border px-4 py-2 rounded-full text-sm"
-            }
+                value === "Rent" || value === "Sale"
+                  ? value
+                  : null
+              );
+            }}
+            className="bg-white border rounded-lg px-3 py-2 text-sm text-gray-700"
           >
-            Rent
-          </button>
-
-          <button
-            onClick={() =>
-              setListingFilter(
-                listingFilter === "Sale" ? null : "Sale"
-              )
-            }
-            className={
-              listingFilter === "Sale"
-                ? "bg-gray-900 text-white px-4 py-2 rounded-full text-sm"
-                : "bg-white border px-4 py-2 rounded-full text-sm"
-            }
-          >
-            Sale
-          </button>
+            <option value="">Rent/Sale: All</option>
+            <option value="Rent">Rent</option>
+            <option value="Sale">Sale</option>
+          </select>
         </div>
 
         <div className="flex items-center justify-between mt-5 mb-3 gap-3">
@@ -722,6 +891,7 @@ export default function Home() {
           </Link>
         </div>
       </section>
-    </main>
+      </main>
+    </>
   );
 }

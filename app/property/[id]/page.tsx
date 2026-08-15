@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { supabase } from "@/lib/supabase";
 import PhotoGallery from "./PhotoGallery";
 
@@ -25,6 +26,16 @@ export default async function PropertyPage({
   params,
 }: PropertyPageProps) {
   const { id } = await params;
+
+  const requestHeaders = await headers();
+  const protocol =
+    requestHeaders.get("x-forwarded-proto") || "http";
+  const host =
+    requestHeaders.get("x-forwarded-host") ||
+    requestHeaders.get("host") ||
+    "localhost:3000";
+
+  const listingUrl = `${protocol}://${host}/property/${id}`;
 
   const { data: property, error } = await supabase
     .from("properties")
@@ -330,7 +341,9 @@ export default async function PropertyPage({
                 <a
                   href={`https://wa.me/${String(
                     property.broker_whatsapp
-                  ).replace(/\D/g, "")}`}
+                  ).replace(/\D/g, "")}?text=${encodeURIComponent(
+                    `Hey ${property.broker_name || "Property Contact"}, I want to visit the ${property.title} flat. Can you arrange the visit for me today?\n\nListing: ${listingUrl}`
+                  )}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 bg-green-600 text-white text-center py-3 rounded-xl font-medium"
