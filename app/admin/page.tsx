@@ -379,6 +379,55 @@ export default function AdminPage() {
     setActionId(propertyId);
 
     try {
+      /*
+       * Remove the actual uploaded files through the Supabase Storage API.
+       * The database RPC intentionally no longer touches storage.objects.
+       */
+      const propertyPhotos = [
+        ...photos.filter((photo) => photo.property_id === propertyId),
+        ...approvedPhotos.filter(
+          (photo) => photo.property_id === propertyId
+        ),
+      ];
+
+      const uniquePhotoUrls = Array.from(
+        new Set(
+          propertyPhotos
+            .map((photo) => photo.photo_url)
+            .filter((url): url is string => Boolean(url))
+        )
+      );
+
+      const storagePaths = uniquePhotoUrls
+        .map((url) => {
+          const marker = "/storage/v1/object/public/property-photos/";
+          const index = url.indexOf(marker);
+
+          if (index === -1) {
+            return null;
+          }
+
+          return decodeURIComponent(url.slice(index + marker.length));
+        })
+        .filter((path): path is string => Boolean(path));
+
+      if (storagePaths.length > 0) {
+        const { error: storageError } = await supabase.storage
+          .from("property-photos")
+          .remove(storagePaths);
+
+        if (storageError) {
+          console.error(
+            "REMOVE PROPERTY STORAGE ERROR:",
+            storageError
+          );
+          setError(
+            `Unable to remove property photos: ${storageError.message}`
+          );
+          return;
+        }
+      }
+
       const { error } = await supabase.rpc("remove_property", {
         p_property_id: propertyId,
       });
