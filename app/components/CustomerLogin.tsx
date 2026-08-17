@@ -27,8 +27,6 @@ declare global {
   }
 }
 
-const MSG91_WIDGET_ID = "366871707557363233343135";
-
 export default function CustomerLogin({
   onVerified,
   onClose,
@@ -39,16 +37,11 @@ export default function CustomerLogin({
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    if (
-      document.querySelector(
-        'script[data-msg91-otp="true"]'
-      )
-    ) {
+    if (document.querySelector('script[data-msg91-otp="true"]')) {
       return;
     }
 
     const script = document.createElement("script");
-
     script.src = "https://verify.msg91.com/otp-provider.js";
     script.async = true;
     script.dataset.msg91Otp = "true";
@@ -60,7 +53,7 @@ export default function CustomerLogin({
     };
   }, []);
 
-  const startOtp = () => {
+  const startOtp = async () => {
     setMessage("");
 
     const cleanName = fullName.trim();
@@ -76,46 +69,48 @@ export default function CustomerLogin({
       return;
     }
 
-    const widgetToken =
-      process.env.NEXT_PUBLIC_MSG91_WIDGET_TOKEN;
-
-    if (!widgetToken) {
-      setMessage("OTP service is not configured.");
-      return;
-    }
-
-    if (typeof window.initSendOTP !== "function") {
-      setMessage("OTP service is loading. Please try again.");
-      return;
-    }
-
     setLoading(true);
 
     try {
+      // Get the MSG91 widget token from our server at runtime.
+      const configResponse = await fetch("/api/customer/otp-config", {
+        cache: "no-store",
+      });
+
+      const configData = await configResponse.json();
+
+      if (!configResponse.ok || !configData.token) {
+        console.error("OTP CONFIG ERROR:", configData);
+        setMessage("OTP service is not configured.");
+        return;
+      }
+
+      // Make sure the MSG91 script has loaded.
+      if (typeof window.initSendOTP !== "function") {
+        setMessage("OTP service is loading. Please try again.");
+        return;
+      }
+
       window.initSendOTP({
-        widgetId: MSG91_WIDGET_ID,
-        tokenAuth: widgetToken,
+        widgetId: configData.widgetId,
+        tokenAuth: configData.token,
         identifier: `91${cleanPhone}`,
         exposeMethods: false,
 
         success: async (data) => {
-          console.log("MSG91 OTP success:", data);
+          console.log("MSG91 OTP SUCCESS:", data);
 
           const accessToken =
-            typeof data.token === "string"
-              ? data.token
-              : "";
+            typeof data.token === "string" ? data.token : "";
 
           if (!accessToken) {
+            setMessage("OTP verification token was not received.");
             setLoading(false);
-            setMessage(
-              "OTP verification token was not received."
-            );
             return;
           }
 
           try {
-            const response = await fetch(
+            const verifyResponse = await fetch(
               "/api/customer/verify-otp",
               {
                 method: "POST",
@@ -130,11 +125,11 @@ export default function CustomerLogin({
               }
             );
 
-            const result = await response.json();
+            const verifyData = await verifyResponse.json();
 
-            if (!response.ok) {
+            if (!verifyResponse.ok) {
               setMessage(
-                result.error ||
+                verifyData.error ||
                   "Unable to verify your mobile number."
               );
               return;
@@ -145,42 +140,24 @@ export default function CustomerLogin({
               phone: cleanPhone,
             });
           } catch (error) {
-            console.error(
-              "VERIFY REQUEST ERROR:",
-              error
-            );
-
-            setMessage(
-              "Unable to complete verification."
-            );
+            console.error("VERIFY REQUEST ERROR:", error);
+            setMessage("Unable to complete verification.");
           } finally {
             setLoading(false);
           }
         },
 
         failure: (error) => {
-          console.error(
-            "MSG91 OTP FAILURE:",
-            error
-          );
-
-          setMessage(
-            "OTP verification failed. Please try again."
-          );
-
+          console.error("MSG91 OTP FAILURE:", error);
+          setMessage("OTP verification failed. Please try again.");
           setLoading(false);
         },
       });
     } catch (error) {
-      console.error(
-        "START OTP ERROR:",
-        error
-      );
-
-      setMessage(
-        "Unable to start OTP verification."
-      );
-
+      console.error("START OTP ERROR:", error);
+      setMessage("Unable to start OTP verification.");
+      setLoading(false);
+    } finally {
       setLoading(false);
     }
   };
@@ -222,9 +199,7 @@ export default function CustomerLogin({
             <input
               type="text"
               value={fullName}
-              onChange={(event) =>
-                setFullName(event.target.value)
-              }
+              onChange={(event) => setFullName(event.target.value)}
               placeholder="Enter your name"
               autoComplete="name"
               className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500"
@@ -239,9 +214,7 @@ export default function CustomerLogin({
             <input
               type="tel"
               value={phone}
-              onChange={(event) =>
-                setPhone(event.target.value)
-              }
+              onChange={(event) => setPhone(event.target.value)}
               placeholder="Enter your mobile number"
               inputMode="numeric"
               autoComplete="tel"
