@@ -18,8 +18,8 @@ declare global {
       identifier?: string;
       exposeMethods?: boolean;
       success: (data: {
-        message?: string;
         token?: string;
+        message?: string;
         [key: string]: unknown;
       }) => void;
       failure: (error: unknown) => void;
@@ -39,11 +39,16 @@ export default function CustomerLogin({
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    if (document.querySelector('script[data-msg91-otp="true"]')) {
+    if (
+      document.querySelector(
+        'script[data-msg91-otp="true"]'
+      )
+    ) {
       return;
     }
 
     const script = document.createElement("script");
+
     script.src = "https://verify.msg91.com/otp-provider.js";
     script.async = true;
     script.dataset.msg91Otp = "true";
@@ -55,7 +60,7 @@ export default function CustomerLogin({
     };
   }, []);
 
-  const startOtp = async () => {
+  const startOtp = () => {
     setMessage("");
 
     const cleanName = fullName.trim();
@@ -71,7 +76,8 @@ export default function CustomerLogin({
       return;
     }
 
-    const widgetToken = process.env.NEXT_PUBLIC_MSG91_WIDGET_TOKEN;
+    const widgetToken =
+      process.env.NEXT_PUBLIC_MSG91_WIDGET_TOKEN;
 
     if (!widgetToken) {
       setMessage("OTP service is not configured.");
@@ -79,7 +85,7 @@ export default function CustomerLogin({
     }
 
     if (typeof window.initSendOTP !== "function") {
-      setMessage("OTP service is still loading. Please try again.");
+      setMessage("OTP service is loading. Please try again.");
       return;
     }
 
@@ -96,16 +102,20 @@ export default function CustomerLogin({
           console.log("MSG91 OTP success:", data);
 
           const accessToken =
-            typeof data.token === "string" ? data.token : "";
+            typeof data.token === "string"
+              ? data.token
+              : "";
 
           if (!accessToken) {
             setLoading(false);
-            setMessage("OTP verification token was not received.");
+            setMessage(
+              "OTP verification token was not received."
+            );
             return;
           }
 
           try {
-            const verifyResponse = await fetch(
+            const response = await fetch(
               "/api/customer/verify-otp",
               {
                 method: "POST",
@@ -120,11 +130,11 @@ export default function CustomerLogin({
               }
             );
 
-            const verifyData = await verifyResponse.json();
+            const result = await response.json();
 
-            if (!verifyResponse.ok) {
+            if (!response.ok) {
               setMessage(
-                verifyData.error ||
+                result.error ||
                   "Unable to verify your mobile number."
               );
               return;
@@ -135,22 +145,42 @@ export default function CustomerLogin({
               phone: cleanPhone,
             });
           } catch (error) {
-            console.error("VERIFY REQUEST ERROR:", error);
-            setMessage("Unable to complete verification.");
+            console.error(
+              "VERIFY REQUEST ERROR:",
+              error
+            );
+
+            setMessage(
+              "Unable to complete verification."
+            );
           } finally {
             setLoading(false);
           }
         },
 
         failure: (error) => {
-          console.error("MSG91 OTP FAILURE:", error);
-          setMessage("OTP verification failed. Please try again.");
+          console.error(
+            "MSG91 OTP FAILURE:",
+            error
+          );
+
+          setMessage(
+            "OTP verification failed. Please try again."
+          );
+
           setLoading(false);
         },
       });
     } catch (error) {
-      console.error("START OTP ERROR:", error);
-      setMessage("Unable to start OTP verification.");
+      console.error(
+        "START OTP ERROR:",
+        error
+      );
+
+      setMessage(
+        "Unable to start OTP verification."
+      );
+
       setLoading(false);
     }
   };
@@ -158,6 +188,7 @@ export default function CustomerLogin({
   return (
     <div className="fixed inset-0 z-[100] bg-black/50 flex items-end sm:items-center justify-center">
       <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl">
+
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-bold text-gray-900">
@@ -165,7 +196,7 @@ export default function CustomerLogin({
             </h2>
 
             <p className="text-sm text-gray-500 mt-1">
-              Your details help us protect your enquiry.
+              Verify your mobile number to continue.
             </p>
           </div>
 
@@ -182,6 +213,7 @@ export default function CustomerLogin({
         </div>
 
         <div className="space-y-4">
+
           <div>
             <label className="block text-sm font-semibold text-gray-800 mb-1">
               Your name
@@ -190,8 +222,11 @@ export default function CustomerLogin({
             <input
               type="text"
               value={fullName}
-              onChange={(event) => setFullName(event.target.value)}
+              onChange={(event) =>
+                setFullName(event.target.value)
+              }
               placeholder="Enter your name"
+              autoComplete="name"
               className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500"
             />
           </div>
@@ -204,10 +239,13 @@ export default function CustomerLogin({
             <input
               type="tel"
               value={phone}
-              onChange={(event) => setPhone(event.target.value)}
+              onChange={(event) =>
+                setPhone(event.target.value)
+              }
               placeholder="Enter your mobile number"
               inputMode="numeric"
               autoComplete="tel"
+              maxLength={10}
               className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500"
             />
           </div>
@@ -226,11 +264,13 @@ export default function CustomerLogin({
           >
             {loading ? "Opening OTP..." : "Send OTP"}
           </button>
+
         </div>
 
         <p className="text-[11px] text-gray-400 text-center mt-5 leading-4">
           Your mobile number is used to identify your HomeEase enquiry.
         </p>
+
       </div>
     </div>
   );

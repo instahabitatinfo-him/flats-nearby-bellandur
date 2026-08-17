@@ -19,10 +19,8 @@ export async function POST(request: Request) {
     const authKey = process.env.MSG91_AUTH_KEY;
 
     if (!authKey) {
-      console.error("MSG91_AUTH_KEY is not configured");
-
       return NextResponse.json(
-        { error: "OTP service is not configured" },
+        { error: "OTP verification service is not configured" },
         { status: 500 }
       );
     }
@@ -41,18 +39,14 @@ export async function POST(request: Request) {
       }
     );
 
-    const msg91Data = await msg91Response.json();
-
-    console.log("MSG91 verification response:", msg91Data);
-
     if (!msg91Response.ok) {
       return NextResponse.json(
-        { error: "OTP verification failed" },
+        { error: "Mobile number verification failed" },
         { status: 401 }
       );
     }
 
-    const { data: customer, error } = await supabase
+    const { data: customer, error: customerError } = await supabase
       .from("customer_profiles")
       .upsert(
         {
@@ -67,8 +61,8 @@ export async function POST(request: Request) {
       .select("id, full_name, phone")
       .single();
 
-    if (error) {
-      console.error("CUSTOMER PROFILE ERROR:", error);
+    if (customerError) {
+      console.error("CUSTOMER PROFILE ERROR:", customerError);
 
       return NextResponse.json(
         { error: "Unable to save customer profile" },
