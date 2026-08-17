@@ -19,6 +19,7 @@ declare global {
       exposeMethods?: boolean;
       success: (data: {
         message?: string;
+        token?: string;
         [key: string]: unknown;
       }) => void;
       failure: (error: unknown) => void;
@@ -70,39 +71,32 @@ export default function CustomerLogin({
       return;
     }
 
+    const widgetToken = process.env.NEXT_PUBLIC_MSG91_WIDGET_TOKEN;
+
+    if (!widgetToken) {
+      setMessage("OTP service is not configured.");
+      return;
+    }
+
+    if (typeof window.initSendOTP !== "function") {
+      setMessage("OTP service is still loading. Please try again.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const tokenResponse = await fetch("/api/customer/otp-token");
-
-      const tokenData = await tokenResponse.json();
-
-      if (!tokenResponse.ok || !tokenData.token) {
-        setMessage("Unable to start OTP verification.");
-        return;
-      }
-
-      if (typeof window.initSendOTP !== "function") {
-        setMessage("OTP service is still loading. Please try again.");
-        return;
-      }
-
       window.initSendOTP({
         widgetId: MSG91_WIDGET_ID,
-        tokenAuth: tokenData.token,
-        identifier: cleanPhone,
+        tokenAuth: widgetToken,
+        identifier: `91${cleanPhone}`,
         exposeMethods: false,
 
         success: async (data) => {
           console.log("MSG91 OTP success:", data);
 
           const accessToken =
-            typeof data === "object" &&
-            data !== null &&
-            "token" in data &&
-            typeof data.token === "string"
-              ? data.token
-              : "";
+            typeof data.token === "string" ? data.token : "";
 
           if (!accessToken) {
             setLoading(false);
@@ -130,7 +124,8 @@ export default function CustomerLogin({
 
             if (!verifyResponse.ok) {
               setMessage(
-                verifyData.error || "Unable to verify your mobile number."
+                verifyData.error ||
+                  "Unable to verify your mobile number."
               );
               return;
             }
@@ -139,7 +134,8 @@ export default function CustomerLogin({
               fullName: cleanName,
               phone: cleanPhone,
             });
-          } catch {
+          } catch (error) {
+            console.error("VERIFY REQUEST ERROR:", error);
             setMessage("Unable to complete verification.");
           } finally {
             setLoading(false);
@@ -147,15 +143,14 @@ export default function CustomerLogin({
         },
 
         failure: (error) => {
-          console.error("MSG91 OTP failure:", error);
+          console.error("MSG91 OTP FAILURE:", error);
           setMessage("OTP verification failed. Please try again.");
           setLoading(false);
         },
       });
     } catch (error) {
-      console.error("OTP START ERROR:", error);
+      console.error("START OTP ERROR:", error);
       setMessage("Unable to start OTP verification.");
-    } finally {
       setLoading(false);
     }
   };
