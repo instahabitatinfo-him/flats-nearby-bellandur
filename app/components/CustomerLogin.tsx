@@ -35,77 +35,81 @@ export default function CustomerLogin({
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [scriptReady, setScriptReady] = useState(
+
+  const [msg91Ready, setMsg91Ready] = useState(
     typeof window !== "undefined" &&
       typeof window.initSendOTP === "function"
   );
 
+  /*
+   * Load MSG91 SDK once.
+   *
+   * We DO NOT initialize the widget here because the
+   * phone number and token are only available when the
+   * user clicks Send OTP.
+   */
   useEffect(() => {
     if (
       typeof window !== "undefined" &&
       typeof window.initSendOTP === "function"
     ) {
-      setScriptReady(true);
+      setMsg91Ready(true);
       return;
     }
 
-    const existingScript = document.querySelector(
+    const existing = document.querySelector(
       'script[data-msg91-otp="true"]'
     ) as HTMLScriptElement | null;
 
-    if (existingScript) {
-      const handleExistingLoad = () => {
-        setScriptReady(
+    if (existing) {
+      const onLoad = () => {
+        console.log("MSG91 SDK READY");
+        setMsg91Ready(
           typeof window.initSendOTP === "function"
         );
       };
 
-      existingScript.addEventListener(
-        "load",
-        handleExistingLoad
-      );
+      existing.addEventListener("load", onLoad);
 
       return () => {
-        existingScript.removeEventListener(
-          "load",
-          handleExistingLoad
-        );
+        existing.removeEventListener("load", onLoad);
       };
     }
 
     const script = document.createElement("script");
 
+    script.type = "text/javascript";
     script.src = "https://verify.msg91.com/otp-provider.js";
     script.async = true;
     script.dataset.msg91Otp = "true";
 
     script.onload = () => {
-      console.log("MSG91 OTP SCRIPT LOADED");
+      console.log("MSG91 SDK LOADED");
 
-      setScriptReady(
+      setMsg91Ready(
         typeof window.initSendOTP === "function"
       );
     };
 
     script.onerror = () => {
-      console.error("MSG91 OTP SCRIPT LOAD FAILED");
-      setMessage("Unable to load OTP service.");
-      setScriptReady(false);
+      console.error("MSG91 SDK LOAD ERROR");
+      setMsg91Ready(false);
+      setMessage(
+        "Unable to load OTP service. Please refresh and try again."
+      );
     };
 
     document.head.appendChild(script);
-
-    return () => {
-      // Do not remove the script.
-      // It can be reused if the login popup opens again.
-    };
   }, []);
 
   const startOtp = async () => {
     setMessage("");
 
     const cleanName = fullName.trim();
-    const cleanPhone = phone.replace(/\D/g, "");
+
+    const cleanPhone = phone
+      .replace(/\D/g, "")
+      .slice(0, 10);
 
     if (!cleanName) {
       setMessage("Please enter your name.");
@@ -113,26 +117,42 @@ export default function CustomerLogin({
     }
 
     if (cleanPhone.length !== 10) {
-      setMessage("Please enter a valid 10-digit mobile number.");
+      setMessage(
+        "Please enter a valid 10-digit mobile number."
+      );
       return;
     }
 
-    if (!scriptReady) {
-      setMessage("OTP service is still loading. Please try again.");
-      return;
-    }
-
-    if (typeof window.initSendOTP !== "function") {
-      setMessage("OTP service is unavailable. Please refresh and try again.");
-      return;
-    }
+    /*
+     * MSG91 requires country code without +.
+     *
+     * Example:
+     * 9876543210
+     *
+     * becomes:
+     * 919876543210
+     */
+    const identifier = `91${cleanPhone}`;
 
     setLoading(true);
 
     try {
       /*
-       * Get the MSG91 widget token from our server.
-       * The MSG91 token stays in Vercel environment variables.
+       * Make sure the SDK is available.
+       */
+      if (
+        typeof window.initSendOTP !== "function"
+      ) {
+        setMessage(
+          "OTP service is still loading. Please try again."
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      /*
+       * Get widget configuration from our server.
        */
       const configResponse = await fetch(
         "/api/customer/otp-config",
@@ -142,7 +162,8 @@ export default function CustomerLogin({
         }
       );
 
-      const configText = await configResponse.text();
+      const configText =
+        await configResponse.text();
 
       console.log(
         "MSG91 CONFIG STATUS:",
@@ -153,7 +174,7 @@ export default function CustomerLogin({
         configured?: boolean;
         widgetId?: string;
         token?: string;
-      } = {};
+      };
 
       try {
         configData = JSON.parse(configText);
@@ -167,10 +188,11 @@ export default function CustomerLogin({
           "OTP service returned an invalid response."
         );
 
+        setLoading(false);
         return;
       }
 
-      console.log("MSG91 CONFIG DATA:", {
+      console.log("MSG91 CONFIG CHECK:", {
         configured: configData.configured,
         widgetId: configData.widgetId,
         hasToken: Boolean(configData.token),
@@ -196,23 +218,12 @@ export default function CustomerLogin({
           "OTP service is not configured correctly."
         );
 
+        setLoading(false);
         return;
       }
 
-      /*
-       * MSG91 requires the Indian mobile number in
-       * international format WITHOUT the + sign.
-       *
-       * Example:
-       * 9876543210
-       *
-       * becomes:
-       * 919876543210
-       */
-      const identifier = `91${cleanPhone}`;
-
       console.log(
-        "MSG91 START:",
+        "MSG91 INITIALIZING WIDGET:",
         {
           widgetId: configData.widgetId,
           identifier,
@@ -220,10 +231,11 @@ export default function CustomerLogin({
       );
 
       /*
-       * Start MSG91's default OTP widget.
+       * This follows MSG91's documented Web SDK
+       * configuration.
        *
-       * exposeMethods:false means MSG91 handles
-       * the OTP input/verification popup.
+       * The widget opens its own OTP UI after
+       * initSendOTP is called.
        */
       window.initSendOTP({
         widgetId: configData.widgetId,
@@ -244,12 +256,12 @@ export default function CustomerLogin({
 
           if (!accessToken) {
             console.error(
-              "MSG91 SUCCESS WITHOUT ACCESS TOKEN:",
+              "MSG91 SUCCESS WITHOUT TOKEN:",
               data
             );
 
             setMessage(
-              "OTP was verified, but the verification token was not received."
+              "OTP verification completed, but the verification token was not received."
             );
 
             setLoading(false);
@@ -257,6 +269,9 @@ export default function CustomerLogin({
           }
 
           try {
+            /*
+             * Send MSG91 access token to our server.
+             */
             const response = await fetch(
               "/api/customer/verify-otp",
               {
@@ -272,10 +287,11 @@ export default function CustomerLogin({
               }
             );
 
-            const result = await response.json();
+            const result =
+              await response.json();
 
             console.log(
-              "HOME EASE VERIFY RESPONSE:",
+              "HOME EASE VERIFY RESULT:",
               {
                 status: response.status,
                 verified: result?.verified,
@@ -302,9 +318,9 @@ export default function CustomerLogin({
             }
 
             /*
-             * OTP verification is completely finished.
-             * Tell the protected action that the customer
-             * is now verified.
+             * COMPLETE.
+             *
+             * The protected action can now continue.
              */
             onVerified?.({
               fullName: cleanName,
@@ -328,16 +344,22 @@ export default function CustomerLogin({
 
         failure: (error) => {
           /*
-           * MSG91 sometimes returns an empty object here.
-           * Log it without assuming its shape.
+           * MSG91 sometimes returns {}.
+           *
+           * Log the complete value so we can inspect
+           * the browser-side failure if it happens again.
            */
           console.error(
             "MSG91 OTP FAILURE:",
-            error
+            error,
+            JSON.stringify(error),
+            Object.getOwnPropertyNames(
+              Object(error)
+            )
           );
 
           setMessage(
-            "MSG91 could not start OTP verification. Please check the mobile number and try again."
+            "MSG91 could not start OTP verification. Please check the number and try again."
           );
 
           setLoading(false);
@@ -345,7 +367,7 @@ export default function CustomerLogin({
       });
     } catch (error) {
       console.error(
-        "OTP START ERROR:",
+        "MSG91 START ERROR:",
         error
       );
 
@@ -435,14 +457,14 @@ export default function CustomerLogin({
           <button
             type="button"
             onClick={startOtp}
-            disabled={loading || !scriptReady}
+            disabled={loading}
             className="w-full bg-blue-600 text-white rounded-xl py-3.5 font-semibold disabled:opacity-50"
           >
             {loading
               ? "Opening OTP..."
-              : !scriptReady
-              ? "Loading OTP..."
-              : "Send OTP"}
+              : msg91Ready
+              ? "Send OTP"
+              : "Loading OTP..."}
           </button>
 
         </div>
