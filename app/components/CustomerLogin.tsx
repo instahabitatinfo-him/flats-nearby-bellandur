@@ -27,6 +27,8 @@ declare global {
   }
 }
 
+const MSG91_WIDGET_ID = "366871707557363233343135";
+
 export default function CustomerLogin({
   onVerified,
   onClose,
@@ -47,10 +49,6 @@ export default function CustomerLogin({
     script.dataset.msg91Otp = "true";
 
     document.head.appendChild(script);
-
-    return () => {
-      script.remove();
-    };
   }, []);
 
   const startOtp = async () => {
@@ -72,45 +70,50 @@ export default function CustomerLogin({
     setLoading(true);
 
     try {
-      // Get the MSG91 widget token from our server at runtime.
-      const configResponse = await fetch("/api/customer/otp-config", {
-        cache: "no-store",
-      });
+      const configResponse = await fetch(
+        "/api/customer/otp-config",
+        {
+          cache: "no-store",
+        }
+      );
 
       const configData = await configResponse.json();
 
       if (!configResponse.ok || !configData.token) {
-        console.error("OTP CONFIG ERROR:", configData);
+        console.error("MSG91 CONFIG ERROR:", configData);
         setMessage("OTP service is not configured.");
         return;
       }
 
-      // Make sure the MSG91 script has loaded.
       if (typeof window.initSendOTP !== "function") {
         setMessage("OTP service is loading. Please try again.");
         return;
       }
 
       window.initSendOTP({
-        widgetId: configData.widgetId,
+        widgetId: MSG91_WIDGET_ID,
         tokenAuth: configData.token,
         identifier: `91${cleanPhone}`,
         exposeMethods: false,
 
         success: async (data) => {
-          console.log("MSG91 OTP SUCCESS:", data);
+          console.log("MSG91 SUCCESS:", data);
 
           const accessToken =
-            typeof data.token === "string" ? data.token : "";
+            typeof data.token === "string"
+              ? data.token
+              : "";
 
           if (!accessToken) {
-            setMessage("OTP verification token was not received.");
+            setMessage(
+              "OTP verification token was not received."
+            );
             setLoading(false);
             return;
           }
 
           try {
-            const verifyResponse = await fetch(
+            const response = await fetch(
               "/api/customer/verify-otp",
               {
                 method: "POST",
@@ -125,11 +128,11 @@ export default function CustomerLogin({
               }
             );
 
-            const verifyData = await verifyResponse.json();
+            const result = await response.json();
 
-            if (!verifyResponse.ok) {
+            if (!response.ok) {
               setMessage(
-                verifyData.error ||
+                result.error ||
                   "Unable to verify your mobile number."
               );
               return;
@@ -140,7 +143,7 @@ export default function CustomerLogin({
               phone: cleanPhone,
             });
           } catch (error) {
-            console.error("VERIFY REQUEST ERROR:", error);
+            console.error("VERIFY ERROR:", error);
             setMessage("Unable to complete verification.");
           } finally {
             setLoading(false);
@@ -148,15 +151,14 @@ export default function CustomerLogin({
         },
 
         failure: (error) => {
-          console.error("MSG91 OTP FAILURE:", error);
-          setMessage("OTP verification failed. Please try again.");
+          console.error("MSG91 FAILURE:", error);
+          setMessage("OTP verification failed.");
           setLoading(false);
         },
       });
     } catch (error) {
-      console.error("START OTP ERROR:", error);
+      console.error("OTP START ERROR:", error);
       setMessage("Unable to start OTP verification.");
-      setLoading(false);
     } finally {
       setLoading(false);
     }
@@ -199,7 +201,9 @@ export default function CustomerLogin({
             <input
               type="text"
               value={fullName}
-              onChange={(event) => setFullName(event.target.value)}
+              onChange={(event) =>
+                setFullName(event.target.value)
+              }
               placeholder="Enter your name"
               autoComplete="name"
               className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500"
@@ -214,7 +218,9 @@ export default function CustomerLogin({
             <input
               type="tel"
               value={phone}
-              onChange={(event) => setPhone(event.target.value)}
+              onChange={(event) =>
+                setPhone(event.target.value)
+              }
               placeholder="Enter your mobile number"
               inputMode="numeric"
               autoComplete="tel"
