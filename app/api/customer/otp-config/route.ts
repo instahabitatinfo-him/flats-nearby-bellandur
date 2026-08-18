@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   const token =
-    process.env.HomeEaseUserOTP ||
+    process.env.MSG91_WIDGET_TOKEN ||
     process.env.NEXT_PUBLIC_MSG91_WIDGET_TOKEN;
 
   if (!token) {
