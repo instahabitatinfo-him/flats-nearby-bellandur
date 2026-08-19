@@ -124,213 +124,223 @@ const msg91AccessTokenRef = useRef("");
 
     document.head.appendChild(script);
   }, []);
-
-  /*
-   * Initialize MSG91 widget in Custom UI mode.
-   *
-   * exposeMethods: true means MSG91 does NOT open
-   * its own popup. HomeEase controls the UI.
-   */
-  const initializeWidget = async (
-    identifier: string,
-    onReady?: () => void
-  ) => {
-    const configResponse = await fetch(
-      "/api/customer/otp-config",
-      {
-        method: "GET",
-        cache: "no-store",
-      }
-    );
-
-    const configData = await configResponse.json();
-
-    console.log("MSG91 CONFIG:", {
-      status: configResponse.status,
-      configured: configData?.configured,
-      widgetId: configData?.widgetId,
-      hasToken: Boolean(configData?.token),
-    });
-
-    if (
-      !configResponse.ok ||
-      !configData?.configured ||
-      !configData?.widgetId ||
-      !configData?.token
-    ) {
-      throw new Error(
-        "MSG91 OTP Widget is not configured correctly."
-      );
-    }
-
-    if (typeof window.initSendOTP !== "function") {
-      throw new Error(
-        "MSG91 OTP SDK is not ready."
-      );
-    }
-if (widgetInitialized) {
-  onReady?.();
-  return;
-}
-    window.initSendOTP({
-  widgetId: configData.widgetId,
-  tokenAuth: configData.token,
-  identifier,
-  exposeMethods: true,
-  captchaRenderId: "msg91-captcha",
-
-     success: (data) => {
-  console.log(
-    "MSG91 WIDGET SUCCESS:",
-    data,
-    JSON.stringify(data)
-  );
-
-  const token =
-    typeof data?.token === "string"
-      ? data.token.trim()
-      : "";
-
-  if (token) {
-    msg91AccessTokenRef.current = token;
-  }
-},
-
-      failure: (error) => {
-        console.error(
-          "MSG91 WIDGET FAILURE:",
-          error,
-          JSON.stringify(error)
-        );
-      },
-    });
-setWidgetInitialized(true);
-    /*
-     * Give the widget a moment to expose
-     * sendOtp / retryOtp / verifyOtp.
-     */
-    setTimeout(() => {
-      if (
-        typeof window.sendOtp !== "function" ||
-        typeof window.verifyOtp !== "function"
-      ) {
-        console.error(
-          "MSG91 METHODS NOT EXPOSED:",
-          {
-            sendOtp: typeof window.sendOtp,
-            retryOtp: typeof window.retryOtp,
-            verifyOtp: typeof window.verifyOtp,
-          }
-        );
-
-        return;
-      }
-
-      onReady?.();
-    }, 300);
-  };
-
-  const startOtp = async () => {
-    setMessage("");
-
-    const cleanName = fullName.trim();
-
-    const cleanPhone = phone
-      .replace(/\D/g, "")
-      .slice(0, 10);
-
-    if (!cleanName) {
-      setMessage("Please enter your name.");
-      return;
-    }
-
-    if (cleanPhone.length !== 10) {
-      setMessage(
-        "Please enter a valid 10-digit mobile number."
-      );
-      return;
-    }
-
-    if (!msg91Ready) {
-      setMessage(
-        "OTP service is still loading. Please try again."
-      );
-      return;
-    }
-
-    const identifier = `91${cleanPhone}`;
-
-    setLoading(true);
-
-try {
-  await initializeWidget(identifier, () => {
-  if (
-    typeof window.isCaptchaVerified === "function" &&
-    !window.isCaptchaVerified()
-  ) {
-    setMessage("Please complete the captcha, then click Send OTP.");
-    setLoading(false);
+useEffect(() => {
+  if (!msg91Ready || widgetInitialized) {
     return;
   }
 
-  if (typeof window.sendOtp !== "function") {
-          setMessage(
-            "OTP service is not ready. Please try again."
-          );
-          setLoading(false);
-          return;
+  const initialize = async () => {
+    try {
+      const configResponse = await fetch(
+        "/api/customer/otp-config",
+        {
+          method: "GET",
+          cache: "no-store",
         }
+      );
 
-        console.log(
-          "MSG91 SEND OTP:",
-          identifier
+      const configData = await configResponse.json();
+
+      console.log("MSG91 CONFIG:", {
+        status: configResponse.status,
+        configured: configData?.configured,
+        widgetId: configData?.widgetId,
+        hasToken: Boolean(configData?.token),
+      });
+
+      if (
+        !configResponse.ok ||
+        !configData?.configured ||
+        !configData?.widgetId ||
+        !configData?.token
+      ) {
+        throw new Error(
+          "MSG91 OTP Widget is not configured correctly."
         );
+      }
 
-        window.sendOtp(
-          identifier,
+      if (typeof window.initSendOTP !== "function") {
+        throw new Error(
+          "MSG91 OTP SDK is not ready."
+        );
+      }
 
-          (data) => {
+              window.initSendOTP({
+          widgetId: configData.widgetId,
+          tokenAuth: configData.token,
+          exposeMethods: true,
+          captchaRenderId: "msg91-captcha",
+
+          success: (data) => {
             console.log(
-              "MSG91 OTP SENT:",
-              data
+              "MSG91 WIDGET SUCCESS:",
+              data,
+              JSON.stringify(data)
             );
 
-            setOtpSent(true);
-            setMessage(
-              "OTP sent to your mobile number."
-            );
-            setLoading(false);
+            const token =
+              typeof data?.token === "string"
+                ? data.token.trim()
+                : "";
+
+            if (token) {
+              msg91AccessTokenRef.current = token;
+            }
           },
 
-          (error) => {
+          failure: (error) => {
             console.error(
-              "MSG91 SEND OTP FAILURE:",
+              "MSG91 WIDGET FAILURE:",
               error,
               JSON.stringify(error)
             );
+          },
+        });
 
-            setMessage(
-              "Unable to send OTP. Please try again."
+        setTimeout(() => {
+          console.log("MSG91 METHODS:", {
+            sendOtp: typeof window.sendOtp,
+            retryOtp: typeof window.retryOtp,
+            verifyOtp: typeof window.verifyOtp,
+            captcha: typeof window.isCaptchaVerified,
+          });
+
+          if (
+            typeof window.sendOtp === "function" &&
+            typeof window.verifyOtp === "function"
+          ) {
+            setWidgetInitialized(true);
+            console.log("MSG91 WIDGET INITIALIZED");
+          } else {
+            console.error(
+              "MSG91 METHODS NOT EXPOSED"
             );
-            setLoading(false);
           }
-        );
-      });
+        }, 500);
+
     } catch (error) {
       console.error(
-        "MSG91 START ERROR:",
+        "MSG91 INITIALIZATION ERROR:",
         error
       );
 
       setMessage(
         error instanceof Error
           ? error.message
-          : "Unable to start OTP verification."
+          : "Unable to initialize OTP service."
       );
-
-      setLoading(false);
     }
   };
+
+  initialize();
+}, [msg91Ready, widgetInitialized]);
+
+  const startOtp = async () => {
+  setMessage("");
+
+  const cleanName = fullName.trim();
+
+  const cleanPhone = phone
+    .replace(/\D/g, "")
+    .slice(0, 10);
+
+  if (!cleanName) {
+    setMessage("Please enter your name.");
+    return;
+  }
+
+  if (cleanPhone.length !== 10) {
+    setMessage(
+      "Please enter a valid 10-digit mobile number."
+    );
+    return;
+  }
+
+  if (!msg91Ready) {
+    setMessage(
+      "OTP service is still loading. Please try again."
+    );
+    return;
+  }
+
+  if (!widgetInitialized) {
+    setMessage(
+      "OTP service is still initializing. Please try again."
+    );
+    return;
+  }
+
+  const identifier = `91${cleanPhone}`;
+
+  setLoading(true);
+
+  try {
+    if (
+      typeof window.isCaptchaVerified === "function" &&
+      !window.isCaptchaVerified()
+    ) {
+      setMessage(
+        "Please complete the captcha, then click Send OTP."
+      );
+      setLoading(false);
+      return;
+    }
+
+    if (typeof window.sendOtp !== "function") {
+      setMessage(
+        "OTP service is not ready. Please try again."
+      );
+      setLoading(false);
+      return;
+    }
+
+    console.log(
+      "MSG91 SEND OTP:",
+      identifier
+    );
+
+    window.sendOtp(
+      identifier,
+
+      (data) => {
+        console.log(
+          "MSG91 OTP SENT:",
+          data
+        );
+
+        setOtpSent(true);
+        setMessage(
+          "OTP sent to your mobile number."
+        );
+        setLoading(false);
+      },
+
+      (error) => {
+        console.error(
+          "MSG91 SEND OTP FAILURE:",
+          error,
+          JSON.stringify(error)
+        );
+
+        setMessage(
+          "Unable to send OTP. Please try again."
+        );
+        setLoading(false);
+      }
+    );
+  } catch (error) {
+    console.error(
+      "MSG91 SEND OTP ERROR:",
+      error
+    );
+
+    setMessage(
+      "Unable to send OTP. Please try again."
+    );
+
+    setLoading(false);
+  }
+};
 
   const resendOtp = () => {
     setMessage("");
