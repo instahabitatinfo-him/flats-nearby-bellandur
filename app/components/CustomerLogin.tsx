@@ -68,6 +68,7 @@ export default function CustomerLogin({
 
   const [msg91Ready, setMsg91Ready] = useState(false);
 const [widgetInitialized, setWidgetInitialized] = useState(false);
+const widgetInitializingRef = useRef(false);
 const msg91AccessTokenRef = useRef("");
   /*
    * Load MSG91 Web OTP Widget SDK.
@@ -129,7 +130,11 @@ useEffect(() => {
     return;
   }
 
-  const initialize = async () => {
+  const initialize = async () => {if (widgetInitializingRef.current) {
+  return;
+}
+
+widgetInitializingRef.current = true;
     try {
       const configResponse = await fetch(
         "/api/customer/otp-config",
@@ -219,7 +224,9 @@ useEffect(() => {
         }, 500);
 
     } catch (error) {
-      console.error(
+  widgetInitializingRef.current = false;
+
+  console.error(
         "MSG91 INITIALIZATION ERROR:",
         error
       );
@@ -358,7 +365,7 @@ useEffect(() => {
      * null = use the widget's configured resend channel.
      */
     window.retryOtp(
-      null,
+  "11",
 
       (data) => {
         console.log(

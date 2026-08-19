@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const token =
-    process.env.MSG91_WIDGET_TOKEN ||
-    process.env.NEXT_PUBLIC_MSG91_WIDGET_TOKEN;
+  const token = process.env.MSG91_WIDGET_TOKEN;
 
   if (!token) {
-    console.error("MSG91 widget token is missing from Vercel environment");
+    console.error("MSG91 widget token is missing from environment");
 
     return NextResponse.json(
       { configured: false },
@@ -16,7 +14,7 @@ export async function GET() {
 
   return NextResponse.json({
     configured: true,
-    widgetId:  "3668736d7a50343935393230",
+    widgetId: "3668736d7a50343935393230",
     token,
   });
 }

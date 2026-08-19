@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import CustomerLogin from "./components/CustomerLogin";
@@ -148,13 +149,41 @@ export default function Home() {
     setShowMapLogin(false);
     setSelectedMapUrl(null);
   };
-
+const [pendingPropertyId, setPendingPropertyId] =
+  useState<number | null>(null);
   const [showCustomerLogin, setShowCustomerLogin] = useState(false);
   const [customerAuthenticated, setCustomerAuthenticated] =
     useState(false);
   const [customerName, setCustomerName] = useState("");
+const router = useRouter();
 
-  useEffect(() => {
+  const handleViewDetails = (propertyId: number) => {
+    if (customerAuthenticated) {
+      router.push(`/property/${propertyId}`);
+      return;
+    }
+
+    setPendingPropertyId(propertyId);
+    setShowCustomerLogin(true);
+  };
+
+  const handleViewDetailsVerified = (customer: {
+    id: string;
+    fullName: string;
+    phone: string;
+  }) => {
+    setCustomerAuthenticated(true);
+    setCustomerName(customer.fullName);
+    setShowCustomerLogin(false);
+
+    if (pendingPropertyId !== null) {
+      const propertyId = pendingPropertyId;
+      setPendingPropertyId(null);
+      router.push(`/property/${propertyId}`);
+    }
+  };
+
+ useEffect(() => {
     const checkCustomerSession = async () => {
       try {
         const response = await fetch(
@@ -1146,27 +1175,15 @@ export default function Home() {
                   </div>
 
                   <div className="flex gap-2">
-                    {property.latitude != null &&
-                      property.longitude != null && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleMapClick(
-                              `https://www.google.com/maps?q=${property.latitude},${property.longitude}`
-                            )
-                          }
-                          className="bg-gray-100 text-gray-700 px-3 py-2 rounded-xl text-sm font-medium"
-                        >
-                          📍 Map
-                        </button>
-                      )}
+                  
 
-                    <Link
-                      href={`/property/${property.id}`}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium"
-                    >
-                      View Details
-                    </Link>
+                   <button
+  type="button"
+  onClick={() => handleViewDetails(property.id)}
+  className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium"
+>
+  View Details
+</button>
                   </div>
                 </div>
               </div>
@@ -1192,13 +1209,13 @@ export default function Home() {
         </div>
       </section>
       </main>
-      {showMapLogin && (
+      {showCustomerLogin && (
         <CustomerLogin
           onClose={() => {
-            setShowMapLogin(false);
-            setSelectedMapUrl(null);
+            setShowCustomerLogin(false);
+            setPendingPropertyId(null);
           }}
-          onVerified={handleMapVerified}
+          onVerified={handleViewDetailsVerified}
         />
       )}
     </>
