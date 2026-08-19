@@ -21,7 +21,7 @@ export default async function ScanPage({
   if (error || !location) {
     return (
       <main className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-md mx-auto bg-white rounded-2xl p-6">
+        <div className="w-full max-w-5xl mx-auto bg-white rounded-2xl p-5 md:p-8">
           <h1 className="text-xl font-bold">
             Location not found
           </h1>
@@ -49,7 +49,7 @@ export default async function ScanPage({
     <main className="min-h-screen bg-gray-50">
 
       <header className="bg-white border-b">
-        <div className="max-w-md mx-auto px-5 py-4">
+        <div className="w-full max-w-7xl mx-auto px-5 md:px-8 lg:px-10 py-4">
           <h1 className="text-xl font-bold text-gray-900">
             Flats Near You
           </h1>
@@ -60,7 +60,7 @@ export default async function ScanPage({
         </div>
       </header>
 
-      <section className="max-w-md mx-auto px-5 py-6">
+      <section className="w-full max-w-7xl mx-auto px-5 md:px-8 lg:px-10 py-6 md:py-8">
 
         <div className="bg-blue-50 rounded-2xl p-5 mb-5">
 
@@ -109,7 +109,7 @@ export default async function ScanPage({
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
 
             {properties.map((property) => (
               <div

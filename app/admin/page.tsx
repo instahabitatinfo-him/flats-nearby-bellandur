@@ -463,7 +463,7 @@ export default function AdminPage() {
   return (
     <main className="min-h-screen bg-gray-50">
       <header className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-5 py-5 flex items-center justify-between gap-4">
+        <div className="w-full max-w-7xl mx-auto px-5 md:px-8 lg:px-10 py-5 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
               Property Admin
@@ -483,7 +483,7 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-5 py-6">
+      <div className="w-full max-w-7xl mx-auto px-5 md:px-8 lg:px-10 py-6">
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
             <p className="text-sm text-red-600">{error}</p>
@@ -567,7 +567,7 @@ export default function AdminPage() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 mt-5 text-sm">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-5 text-sm">
                     <div>
                       <p className="text-gray-500">Price</p>
                       <p className="font-semibold text-gray-900">
@@ -665,7 +665,7 @@ export default function AdminPage() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 mt-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-6">
                     <button
                       onClick={() => rejectProperty(property.id)}
                       disabled={actionId === property.id}
@@ -758,7 +758,7 @@ export default function AdminPage() {
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mt-5 text-sm">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-5 text-sm">
                       <div>
                         <p className="text-gray-500">Price</p>
                         <p className="font-semibold text-gray-900">

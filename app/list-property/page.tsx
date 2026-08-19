@@ -520,7 +520,7 @@ setSubmitted(true);} catch (caughtError) {
 }
 
 if (submitted) {
-return ( <main className="min-h-screen bg-gray-50 p-6"> <div className="max-w-xl mx-auto bg-white rounded-2xl p-6 shadow-sm"> <h1 className="text-2xl font-bold text-gray-900">
+return ( <main className="min-h-screen bg-gray-50 p-6"> <div className="w-full max-w-5xl mx-auto bg-white rounded-2xl p-5 md:p-8 shadow-sm"> <h1 className="text-2xl font-bold text-gray-900">
 Property submitted </h1>
 
       <p className="text-gray-600 mt-3">
@@ -554,7 +554,7 @@ Property submitted </h1>
 
 }
 
-return ( <main className="min-h-screen bg-gray-50 p-6"> <div className="max-w-xl mx-auto"> <div className="mb-6"> <h1 className="text-3xl font-bold text-gray-900">
+return ( <main className="min-h-screen bg-gray-50 p-6"> <div className="w-full max-w-5xl mx-auto"> <div className="mb-6"> <h1 className="text-3xl font-bold text-gray-900">
 List Property </h1>
 
       <p className="text-gray-600 mt-2">
@@ -603,7 +603,7 @@ List Property </h1>
           Listing type
         </label>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <button
             type="button"
             onClick={() => setListingType("Rent")}
@@ -630,7 +630,7 @@ List Property </h1>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Property type
@@ -709,7 +709,7 @@ List Property </h1>
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Floor
@@ -739,7 +739,7 @@ List Property </h1>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Area (sqft)
@@ -830,7 +830,7 @@ List Property </h1>
             For rental properties, this is usually one month's rent.
           </p>
 
-          <div className="grid grid-cols-2 gap-3 mt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
             <button
               type="button"
               onClick={() => setBrokerageNegotiable(true)}

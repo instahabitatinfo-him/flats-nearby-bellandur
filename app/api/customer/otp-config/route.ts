@@ -16,7 +16,7 @@ export async function GET() {
 
   return NextResponse.json({
     configured: true,
-    widgetId: "366871707557363233343135",
+    widgetId: "3668726d706b383637353038",
     token,
   });
 }

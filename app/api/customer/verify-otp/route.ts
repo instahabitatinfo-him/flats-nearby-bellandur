@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseServer } from "@/lib/supabase-server";
+import {
+  createCustomerSession,
+  CUSTOMER_SESSION_COOKIE,
+} from "@/lib/customer-session";
 
 export async function POST(request: Request) {
   try {
@@ -46,7 +50,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: customer, error: customerError } = await supabase
+    const { data: customer, error: customerError } = await supabaseServer
       .from("customer_profiles")
       .upsert(
         {
@@ -62,7 +66,10 @@ export async function POST(request: Request) {
       .single();
 
     if (customerError) {
-      console.error("CUSTOMER PROFILE ERROR:", customerError);
+ console.error(
+  "CUSTOMER PROFILE ERROR:",
+  JSON.stringify(customerError, null, 2)
+);
 
       return NextResponse.json(
         { error: "Unable to save customer profile" },
@@ -70,14 +77,28 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({
-      verified: true,
-      customer: {
-        id: customer.id,
-        fullName: customer.full_name,
-        phone: customer.phone,
-      },
-    });
+    const session = createCustomerSession(customer.id);
+
+const response = NextResponse.json({
+  verified: true,
+  customer: {
+    id: customer.id,
+    fullName: customer.full_name,
+    phone: customer.phone,
+  },
+});
+
+response.cookies.set({
+  name: CUSTOMER_SESSION_COOKIE,
+  value: session,
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  path: "/",
+  maxAge: 60 * 60 * 24 * 30,
+});
+
+return response;
   } catch (error) {
     console.error("VERIFY OTP ERROR:", error);
 

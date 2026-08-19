@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type CustomerLoginProps = {
   onVerified?: (customer: {
-    fullName: string;
-    phone: string;
-  }) => void;
+  id: string;
+  fullName: string;
+  phone: string;
+}) => void;
   onClose?: () => void;
 };
 
@@ -17,6 +18,7 @@ declare global {
       tokenAuth: string;
       identifier?: string;
       exposeMethods?: boolean;
+      captchaRenderId?: string;
       success: (data: {
         token?: string;
         message?: string;
@@ -24,6 +26,30 @@ declare global {
       }) => void;
       failure: (error: unknown) => void;
     }) => void;
+isCaptchaVerified?: () => boolean;
+
+    sendOtp?: (
+      identifier: string,
+      success?: (data: unknown) => void,
+      failure?: (error: unknown) => void
+    ) => void;
+
+    retryOtp?: (
+      channel: string | null,
+      success?: (data: unknown) => void,
+      failure?: (error: unknown) => void,
+      token?: string
+    ) => void;
+
+    verifyOtp?: (
+      otp: string | number,
+      success?: (data: {
+        token?: string;
+        [key: string]: unknown;
+      }) => void,
+      failure?: (error: unknown) => void,
+      token?: string
+    ) => void;
   }
 }
 
@@ -33,20 +59,18 @@ export default function CustomerLogin({
 }: CustomerLoginProps) {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+
   const [loading, setLoading] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [resending, setResending] = useState(false);
   const [message, setMessage] = useState("");
 
-  const [msg91Ready, setMsg91Ready] = useState(
-    typeof window !== "undefined" &&
-      typeof window.initSendOTP === "function"
-  );
-
+  const [msg91Ready, setMsg91Ready] = useState(false);
+const [widgetInitialized, setWidgetInitialized] = useState(false);
+const msg91AccessTokenRef = useRef("");
   /*
-   * Load MSG91 SDK once.
-   *
-   * We DO NOT initialize the widget here because the
-   * phone number and token are only available when the
-   * user clicks Send OTP.
+   * Load MSG91 Web OTP Widget SDK.
    */
   useEffect(() => {
     if (
@@ -56,7 +80,6 @@ export default function CustomerLogin({
       setMsg91Ready(true);
       return;
     }
-
     const existing = document.querySelector(
       'script[data-msg91-otp="true"]'
     ) as HTMLScriptElement | null;
@@ -102,6 +125,111 @@ export default function CustomerLogin({
     document.head.appendChild(script);
   }, []);
 
+  /*
+   * Initialize MSG91 widget in Custom UI mode.
+   *
+   * exposeMethods: true means MSG91 does NOT open
+   * its own popup. HomeEase controls the UI.
+   */
+  const initializeWidget = async (
+    identifier: string,
+    onReady?: () => void
+  ) => {
+    const configResponse = await fetch(
+      "/api/customer/otp-config",
+      {
+        method: "GET",
+        cache: "no-store",
+      }
+    );
+
+    const configData = await configResponse.json();
+
+    console.log("MSG91 CONFIG:", {
+      status: configResponse.status,
+      configured: configData?.configured,
+      widgetId: configData?.widgetId,
+      hasToken: Boolean(configData?.token),
+    });
+
+    if (
+      !configResponse.ok ||
+      !configData?.configured ||
+      !configData?.widgetId ||
+      !configData?.token
+    ) {
+      throw new Error(
+        "MSG91 OTP Widget is not configured correctly."
+      );
+    }
+
+    if (typeof window.initSendOTP !== "function") {
+      throw new Error(
+        "MSG91 OTP SDK is not ready."
+      );
+    }
+if (widgetInitialized) {
+  onReady?.();
+  return;
+}
+    window.initSendOTP({
+  widgetId: configData.widgetId,
+  tokenAuth: configData.token,
+  identifier,
+  exposeMethods: true,
+  captchaRenderId: "msg91-captcha",
+
+     success: (data) => {
+  console.log(
+    "MSG91 WIDGET SUCCESS:",
+    data,
+    JSON.stringify(data)
+  );
+
+  const token =
+    typeof data?.token === "string"
+      ? data.token.trim()
+      : "";
+
+  if (token) {
+    msg91AccessTokenRef.current = token;
+  }
+},
+
+      failure: (error) => {
+        console.error(
+          "MSG91 WIDGET FAILURE:",
+          error,
+          JSON.stringify(error)
+        );
+      },
+    });
+setWidgetInitialized(true);
+    /*
+     * Give the widget a moment to expose
+     * sendOtp / retryOtp / verifyOtp.
+     */
+    setTimeout(() => {
+      if (
+        typeof window.sendOtp !== "function" ||
+        typeof window.verifyOtp !== "function"
+      ) {
+        console.error(
+          "MSG91 METHODS NOT EXPOSED:",
+          {
+            sendOtp: typeof window.sendOtp,
+            retryOtp: typeof window.retryOtp,
+            verifyOtp: typeof window.verifyOtp,
+          }
+        );
+
+        return;
+      }
+
+      onReady?.();
+    }, 300);
+  };
+
   const startOtp = async () => {
     setMessage("");
 
@@ -123,247 +251,70 @@ export default function CustomerLogin({
       return;
     }
 
-    /*
-     * MSG91 requires country code without +.
-     *
-     * Example:
-     * 9876543210
-     *
-     * becomes:
-     * 919876543210
-     */
+    if (!msg91Ready) {
+      setMessage(
+        "OTP service is still loading. Please try again."
+      );
+      return;
+    }
+
     const identifier = `91${cleanPhone}`;
 
     setLoading(true);
 
-    try {
-      /*
-       * Make sure the SDK is available.
-       */
-      if (
-        typeof window.initSendOTP !== "function"
-      ) {
-        setMessage(
-          "OTP service is still loading. Please try again."
-        );
+try {
+  await initializeWidget(identifier, () => {
+  if (
+    typeof window.isCaptchaVerified === "function" &&
+    !window.isCaptchaVerified()
+  ) {
+    setMessage("Please complete the captcha, then click Send OTP.");
+    setLoading(false);
+    return;
+  }
 
-        setLoading(false);
-        return;
-      }
-
-      /*
-       * Get widget configuration from our server.
-       */
-      const configResponse = await fetch(
-        "/api/customer/otp-config",
-        {
-          method: "GET",
-          cache: "no-store",
-        }
-      );
-
-      const configText =
-        await configResponse.text();
-
-      console.log(
-        "MSG91 CONFIG STATUS:",
-        configResponse.status
-      );
-
-      let configData: {
-        configured?: boolean;
-        widgetId?: string;
-        token?: string;
-      };
-
-      try {
-        configData = JSON.parse(configText);
-      } catch (error) {
-        console.error(
-          "MSG91 CONFIG JSON ERROR:",
-          error
-        );
-
-        setMessage(
-          "OTP service returned an invalid response."
-        );
-
-        setLoading(false);
-        return;
-      }
-
-      console.log("MSG91 CONFIG CHECK:", {
-        configured: configData.configured,
-        widgetId: configData.widgetId,
-        hasToken: Boolean(configData.token),
-      });
-
-      if (
-        !configResponse.ok ||
-        !configData.configured ||
-        !configData.widgetId ||
-        !configData.token
-      ) {
-        console.error(
-          "MSG91 CONFIG ERROR:",
-          {
-            status: configResponse.status,
-            configured: configData.configured,
-            widgetId: configData.widgetId,
-            hasToken: Boolean(configData.token),
-          }
-        );
-
-        setMessage(
-          "OTP service is not configured correctly."
-        );
-
-        setLoading(false);
-        return;
-      }
-
-      console.log(
-        "MSG91 INITIALIZING WIDGET:",
-        {
-          widgetId: configData.widgetId,
-          identifier,
-        }
-      );
-
-      /*
-       * This follows MSG91's documented Web SDK
-       * configuration.
-       *
-       * The widget opens its own OTP UI after
-       * initSendOTP is called.
-       */
-      window.initSendOTP({
-        widgetId: configData.widgetId,
-        tokenAuth: configData.token,
-        identifier,
-        exposeMethods: false,
-
-        success: async (data) => {
-          console.log(
-            "MSG91 OTP SUCCESS:",
-            data
+  if (typeof window.sendOtp !== "function") {
+          setMessage(
+            "OTP service is not ready. Please try again."
           );
+          setLoading(false);
+          return;
+        }
 
-          const accessToken =
-            typeof data?.token === "string"
-              ? data.token.trim()
-              : "";
+        console.log(
+          "MSG91 SEND OTP:",
+          identifier
+        );
 
-          if (!accessToken) {
-            console.error(
-              "MSG91 SUCCESS WITHOUT TOKEN:",
+        window.sendOtp(
+          identifier,
+
+          (data) => {
+            console.log(
+              "MSG91 OTP SENT:",
               data
             );
 
+            setOtpSent(true);
             setMessage(
-              "OTP verification completed, but the verification token was not received."
+              "OTP sent to your mobile number."
             );
-
             setLoading(false);
-            return;
-          }
+          },
 
-          try {
-            /*
-             * Send MSG91 access token to our server.
-             */
-            const response = await fetch(
-              "/api/customer/verify-otp",
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  fullName: cleanName,
-                  phone: cleanPhone,
-                  accessToken,
-                }),
-              }
-            );
-
-            const result =
-              await response.json();
-
-            console.log(
-              "HOME EASE VERIFY RESULT:",
-              {
-                status: response.status,
-                verified: result?.verified,
-              }
-            );
-
-            if (!response.ok) {
-              setMessage(
-                result?.error ||
-                  "Unable to verify your mobile number."
-              );
-
-              setLoading(false);
-              return;
-            }
-
-            if (!result?.verified) {
-              setMessage(
-                "Mobile number verification was not completed."
-              );
-
-              setLoading(false);
-              return;
-            }
-
-            /*
-             * COMPLETE.
-             *
-             * The protected action can now continue.
-             */
-            onVerified?.({
-              fullName: cleanName,
-              phone: cleanPhone,
-            });
-
-            setLoading(false);
-          } catch (error) {
+          (error) => {
             console.error(
-              "HOME EASE VERIFY ERROR:",
-              error
+              "MSG91 SEND OTP FAILURE:",
+              error,
+              JSON.stringify(error)
             );
 
             setMessage(
-              "Unable to complete verification."
+              "Unable to send OTP. Please try again."
             );
-
             setLoading(false);
           }
-        },
-
-        failure: (error) => {
-          /*
-           * MSG91 sometimes returns {}.
-           *
-           * Log the complete value so we can inspect
-           * the browser-side failure if it happens again.
-           */
-          console.error(
-            "MSG91 OTP FAILURE:",
-            error,
-            JSON.stringify(error),
-            Object.getOwnPropertyNames(
-              Object(error)
-            )
-          );
-
-          setMessage(
-            "MSG91 could not start OTP verification. Please check the number and try again."
-          );
-
-          setLoading(false);
-        },
+        );
       });
     } catch (error) {
       console.error(
@@ -372,11 +323,206 @@ export default function CustomerLogin({
       );
 
       setMessage(
-        "Unable to start OTP verification."
+        error instanceof Error
+          ? error.message
+          : "Unable to start OTP verification."
       );
 
       setLoading(false);
     }
+  };
+
+  const resendOtp = () => {
+    setMessage("");
+    setResending(true);
+
+    if (typeof window.retryOtp !== "function") {
+      setMessage(
+        "OTP service is not ready. Please try again."
+      );
+      setResending(false);
+      return;
+    }
+
+    /*
+     * null = use the widget's configured resend channel.
+     */
+    window.retryOtp(
+      null,
+
+      (data) => {
+        console.log(
+          "MSG91 OTP RESENT:",
+          data
+        );
+
+        setMessage(
+          "A new OTP has been sent."
+        );
+        setResending(false);
+      },
+
+      (error) => {
+        console.error(
+          "MSG91 RESEND FAILURE:",
+          error,
+          JSON.stringify(error)
+        );
+
+        setMessage(
+          "Unable to resend OTP. Please try again."
+        );
+        setResending(false);
+      }
+    );
+  };
+
+  const verifyOtpCode = () => {
+    setMessage("");
+
+    const cleanOtp = otp
+      .replace(/\D/g, "")
+      .slice(0, 4);
+
+    if (cleanOtp.length !== 4) {
+      setMessage(
+        "Please enter the 4-digit OTP."
+      );
+      return;
+    }
+
+    if (typeof window.verifyOtp !== "function") {
+      setMessage(
+        "OTP verification service is not ready."
+      );
+      return;
+    }
+
+    setLoading(true);
+
+    console.log(
+      "MSG91 VERIFY OTP"
+    );
+
+    window.verifyOtp(
+      cleanOtp,
+
+     async (data) => {
+  console.log("MSG91 OTP VERIFIED RAW:", data);
+  console.log(
+    "MSG91 OTP VERIFIED JSON:",
+    JSON.stringify(data)
+  );
+  console.log(
+    "MSG91 ACCESS TOKEN REF:",
+    msg91AccessTokenRef.current
+      ? "[PRESENT]"
+      : "[EMPTY]"
+  );
+
+  const accessToken =
+  typeof data?.token === "string"
+    ? data.token.trim()
+    : typeof data?.message === "string"
+    ? data.message.trim()
+    : msg91AccessTokenRef.current;
+
+  if (!accessToken) {
+          console.error(
+            "MSG91 VERIFY SUCCESS WITHOUT ACCESS TOKEN:",
+            data
+          );
+
+          setMessage(
+            "OTP verified, but verification token was not received."
+          );
+          setLoading(false);
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            "/api/customer/verify-otp",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                fullName: fullName.trim(),
+                phone: phone
+                  .replace(/\D/g, "")
+                  .slice(0, 10),
+                accessToken,
+              }),
+            }
+          );
+
+          const result =
+            await response.json();
+
+          console.log(
+            "HOME EASE VERIFY RESULT:",
+            {
+              status: response.status,
+              verified: result?.verified,
+            }
+          );
+
+          if (!response.ok) {
+            setMessage(
+              result?.error ||
+                "Unable to verify your mobile number."
+            );
+            setLoading(false);
+            return;
+          }
+
+          if (!result?.verified) {
+            setMessage(
+              "Mobile number verification was not completed."
+            );
+            setLoading(false);
+            return;
+          }
+
+onVerified?.({
+  id: result.customer.id,
+  fullName: fullName.trim(),
+  phone: phone
+    .replace(/\D/g, "")
+    .slice(0, 10),
+});
+
+          setLoading(false);
+        } catch (error) {
+          console.error(
+            "HOME EASE VERIFY ERROR:",
+            error
+          );
+
+          setMessage(
+            "Unable to complete verification."
+          );
+
+          setLoading(false);
+        }
+      },
+
+      (error) => {
+        console.error(
+          "MSG91 VERIFY FAILURE:",
+          error,
+          JSON.stringify(error)
+        );
+
+        setMessage(
+          "Incorrect or expired OTP. Please try again."
+        );
+
+        setLoading(false);
+      }
+    );
   };
 
   return (
@@ -408,64 +554,136 @@ export default function CustomerLogin({
 
         <div className="space-y-4">
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-800 mb-1">
-              Your name
-            </label>
+          {!otpSent ? (
+            <>
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-1">
+                  Your name
+                </label>
 
-            <input
-              type="text"
-              value={fullName}
-              onChange={(event) =>
-                setFullName(event.target.value)
-              }
-              placeholder="Enter your name"
-              autoComplete="name"
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500"
-            />
-          </div>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(event) =>
+                    setFullName(event.target.value)
+                  }
+                  placeholder="Enter your name"
+                  autoComplete="name"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500"
+                />
+              </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-800 mb-1">
-              Mobile number
-            </label>
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-1">
+                  Mobile number
+                </label>
 
-            <input
-              type="tel"
-              value={phone}
-              onChange={(event) =>
-                setPhone(
-                  event.target.value
-                    .replace(/\D/g, "")
-                    .slice(0, 10)
-                )
-              }
-              placeholder="Enter your mobile number"
-              inputMode="numeric"
-              autoComplete="tel"
-              maxLength={10}
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500"
-            />
-          </div>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(event) =>
+                    setPhone(
+                      event.target.value
+                        .replace(/\D/g, "")
+                        .slice(0, 10)
+                    )
+                  }
+                  placeholder="Enter your mobile number"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  maxLength={10}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-900 outline-none focus:border-blue-500"
+                />
+              </div>
+<div id="msg91-captcha" />
+              {message && (
+                <p className="text-sm text-gray-700 bg-gray-50 rounded-xl p-3">
+                  {message}
+                </p>
+              )}
 
-          {message && (
-            <p className="text-sm text-gray-700 bg-gray-50 rounded-xl p-3">
-              {message}
-            </p>
+              <button
+                type="button"
+                onClick={startOtp}
+                disabled={loading || !msg91Ready}
+                className="w-full bg-blue-600 text-white rounded-xl py-3.5 font-semibold disabled:opacity-50"
+              >
+                {loading
+                  ? "Sending OTP..."
+                  : msg91Ready
+                  ? "Send OTP"
+                  : "Loading OTP..."}
+              </button>
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-1">
+                  Enter OTP
+                </label>
+
+                <input
+                  type="tel"
+                  value={otp}
+                  onChange={(event) =>
+                    setOtp(
+                      event.target.value
+                        .replace(/\D/g, "")
+                        .slice(0, 4)
+                    )
+                  }
+                  placeholder="Enter 4-digit OTP"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={4}
+                  autoFocus
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-900 text-center text-xl tracking-[0.4em] outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {message && (
+                <p className="text-sm text-gray-700 bg-gray-50 rounded-xl p-3">
+                  {message}
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={verifyOtpCode}
+                disabled={loading}
+                className="w-full bg-blue-600 text-white rounded-xl py-3.5 font-semibold disabled:opacity-50"
+              >
+                {loading
+                  ? "Verifying..."
+                  : "Verify OTP"}
+              </button>
+
+              <button
+                type="button"
+                onClick={resendOtp}
+                disabled={resending || loading}
+                className="w-full text-blue-600 font-semibold py-2 disabled:opacity-50"
+              >
+                {resending
+                  ? "Resending..."
+                  : "Resend OTP"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setOtpSent(false);
+                  setOtp("");
+                  setMessage("");
+                  setWidgetInitialized(false);
+                }}
+                disabled={loading}
+                className="w-full text-gray-500 text-sm py-1"
+              >
+                Change mobile number
+              </button>
+            </>
           )}
-
-          <button
-            type="button"
-            onClick={startOtp}
-            disabled={loading}
-            className="w-full bg-blue-600 text-white rounded-xl py-3.5 font-semibold disabled:opacity-50"
-          >
-            {loading
-              ? "Opening OTP..."
-              : msg91Ready
-              ? "Send OTP"
-              : "Loading OTP..."}
-          </button>
 
         </div>
 

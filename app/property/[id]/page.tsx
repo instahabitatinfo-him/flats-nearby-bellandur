@@ -2,6 +2,8 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { supabase } from "@/lib/supabase";
 import PhotoGallery from "./PhotoGallery";
+import ContactActions from "./ContactActions";
+import ProtectedMapButton from "./ProtectedMapButton";
 
 type PropertyPageProps = {
   params: Promise<{
@@ -28,8 +30,10 @@ export default async function PropertyPage({
   const { id } = await params;
 
   const requestHeaders = await headers();
+
   const protocol =
     requestHeaders.get("x-forwarded-proto") || "http";
+
   const host =
     requestHeaders.get("x-forwarded-host") ||
     requestHeaders.get("host") ||
@@ -47,7 +51,7 @@ export default async function PropertyPage({
   if (error || !property) {
     return (
       <main className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-md mx-auto bg-white rounded-2xl p-6">
+        <div className="w-full max-w-5xl mx-auto bg-white rounded-2xl p-5 md:p-6">
           <h1 className="text-xl font-bold text-gray-900">
             Property not found
           </h1>
@@ -89,20 +93,41 @@ export default async function PropertyPage({
 
   const mainPhoto = propertyPhotos[0]?.photo_url || null;
 
+  const googleMapsUrl =
+    property.latitude != null && property.longitude != null
+      ? `https://www.google.com/maps?q=${property.latitude},${property.longitude}`
+      : null;
+
+  const whatsappUrl = property.broker_whatsapp
+    ? `https://wa.me/${String(property.broker_whatsapp).replace(
+        /\D/g,
+        ""
+      )}?text=${encodeURIComponent(
+        `Hey ${
+          property.broker_name || "Property Contact"
+        }, I want to visit the ${
+          property.title
+        } flat. Can you arrange the visit for me today?\n\nListing: ${listingUrl}`
+      )}`
+    : null;
+
   return (
     <main className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* HEADER */}
       <header className="bg-white border-b sticky top-0 z-20">
-        <div className="max-w-md mx-auto px-5 py-4">
-          <Link href="/" className="text-sm text-blue-600">
+        <div className="w-full max-w-7xl mx-auto px-5 md:px-8 lg:px-10 py-4">
+          <Link
+            href="/"
+            className="text-sm text-blue-600 font-medium"
+          >
             ← Back to properties
           </Link>
         </div>
       </header>
 
-      <section className="max-w-md mx-auto">
-        {/* Main Photo */}
-        <div className="h-72 bg-gray-200 relative overflow-hidden">
+      <section className="w-full max-w-7xl mx-auto px-5 md:px-8 lg:px-10">
+        {/* PHOTO */}
+        <div className="h-72 md:h-80 bg-gray-200 relative overflow-hidden">
           {mainPhoto ? (
             <img
               src={mainPhoto}
@@ -124,7 +149,7 @@ export default async function PropertyPage({
           )}
         </div>
 
-        {/* Photo Gallery */}
+        {/* PHOTO GALLERY */}
         {propertyPhotos.length > 1 && (
           <PhotoGallery
             photos={propertyPhotos}
@@ -132,6 +157,7 @@ export default async function PropertyPage({
           />
         )}
 
+        {/* PROPERTY VIDEO */}
         {propertyVideo?.video_url && (
           <div className="px-5 pt-5">
             <div className="bg-white rounded-2xl border p-4">
@@ -152,9 +178,10 @@ export default async function PropertyPage({
           </div>
         )}
 
+        {/* MAIN CONTENT */}
         <div className="px-5 py-6">
-          {/* Title */}
-          <div className="flex justify-between gap-4">
+          {/* TITLE */}
+          <div className="flex justify-between gap-4 items-start">
             <div className="min-w-0">
               <h1 className="text-2xl font-bold text-gray-900">
                 {property.title}
@@ -165,12 +192,12 @@ export default async function PropertyPage({
               </p>
             </div>
 
-            <span className="h-fit text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full whitespace-nowrap">
+            <span className="h-fit text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full whitespace-nowrap font-semibold">
               Available
             </span>
           </div>
 
-          {/* Price */}
+          {/* PRICE */}
           <div className="bg-white rounded-2xl border p-4 mt-5">
             <p className="text-sm text-gray-500">
               {property.listing_type}
@@ -187,29 +214,35 @@ export default async function PropertyPage({
             </p>
           </div>
 
-          {/* Property Details */}
+          {/* PROPERTY DETAILS */}
           <div className="bg-white rounded-2xl border p-4 mt-4">
             <h2 className="font-semibold text-gray-900">
               Property Details
             </h2>
 
-            <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4 text-sm">
               <div>
-                <p className="text-gray-700 font-medium">Bedrooms</p>
+                <p className="text-gray-700 font-medium">
+                  Bedrooms
+                </p>
                 <p className="font-semibold text-gray-900">
                   {property.bhk} BHK
                 </p>
               </div>
 
               <div>
-                <p className="text-gray-700 font-medium">Property Type</p>
+                <p className="text-gray-700 font-medium">
+                  Property Type
+                </p>
                 <p className="font-semibold text-gray-900">
                   {property.property_type || "Apartment"}
                 </p>
               </div>
 
               <div>
-                <p className="text-gray-700 font-medium">Listing</p>
+                <p className="text-gray-700 font-medium">
+                  Listing
+                </p>
                 <p className="font-semibold text-gray-900">
                   {property.listing_type}
                 </p>
@@ -217,7 +250,9 @@ export default async function PropertyPage({
 
               {property.area_sqft && (
                 <div>
-                  <p className="text-gray-700 font-medium">Area</p>
+                  <p className="text-gray-700 font-medium">
+                    Area
+                  </p>
                   <p className="font-semibold text-gray-900">
                     {property.area_sqft} sqft
                   </p>
@@ -226,7 +261,9 @@ export default async function PropertyPage({
 
               {property.furnishing && (
                 <div>
-                  <p className="text-gray-700 font-medium">Furnishing</p>
+                  <p className="text-gray-700 font-medium">
+                    Furnishing
+                  </p>
                   <p className="font-semibold text-gray-900">
                     {property.furnishing}
                   </p>
@@ -235,7 +272,9 @@ export default async function PropertyPage({
 
               {property.floor != null && (
                 <div>
-                  <p className="text-gray-700 font-medium">Floor</p>
+                  <p className="text-gray-700 font-medium">
+                    Floor
+                  </p>
                   <p className="font-semibold text-gray-900">
                     {property.total_floors != null
                       ? `${property.floor} of ${property.total_floors}`
@@ -246,7 +285,9 @@ export default async function PropertyPage({
 
               {property.availability_date && (
                 <div>
-                  <p className="text-gray-700 font-medium">Available From</p>
+                  <p className="text-gray-700 font-medium">
+                    Available From
+                  </p>
                   <p className="font-semibold text-gray-900">
                     {new Date(
                       `${property.availability_date}T00:00:00`
@@ -261,7 +302,9 @@ export default async function PropertyPage({
 
               {property.deposit && (
                 <div>
-                  <p className="text-gray-700 font-medium">Deposit</p>
+                  <p className="text-gray-700 font-medium">
+                    Deposit
+                  </p>
                   <p className="text-gray-900 font-semibold">
                     ₹{Number(property.deposit).toLocaleString("en-IN")}
                   </p>
@@ -270,7 +313,7 @@ export default async function PropertyPage({
             </div>
           </div>
 
-          {/* Description */}
+          {/* DESCRIPTION */}
           {property.description && (
             <div className="bg-white rounded-2xl border p-4 mt-4">
               <h2 className="font-semibold text-gray-900">
@@ -283,7 +326,7 @@ export default async function PropertyPage({
             </div>
           )}
 
-          {/* Location */}
+          {/* LOCATION */}
           <div className="bg-white rounded-2xl border p-4 mt-4">
             <h2 className="font-semibold text-gray-900">
               Location
@@ -299,25 +342,30 @@ export default async function PropertyPage({
                   <div className="mt-4 overflow-hidden rounded-xl border border-gray-200">
                     <iframe
                       title="Property location map"
-                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${property.longitude - 0.005}%2C${property.latitude - 0.005}%2C${property.longitude + 0.005}%2C${property.latitude + 0.005}&layer=mapnik&marker=${property.latitude}%2C${property.longitude}`}
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${
+                        property.longitude - 0.005
+                      }%2C${
+                        property.latitude - 0.005
+                      }%2C${
+                        property.longitude + 0.005
+                      }%2C${
+                        property.latitude + 0.005
+                      }&layer=mapnik&marker=${
+                        property.latitude
+                      }%2C${property.longitude}`}
                       className="h-56 w-full border-0"
                       loading="lazy"
                     />
                   </div>
 
-                  <a
-                    href={`https://www.google.com/maps?q=${property.latitude},${property.longitude}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block text-center bg-gray-900 text-white rounded-xl py-3 mt-4 text-sm font-semibold hover:bg-black"
-                  >
-                    Open in Google Maps
-                  </a>
+                  <ProtectedMapButton
+                    googleMapsUrl={googleMapsUrl || ""}
+                  />
                 </>
               )}
           </div>
 
-          {/* Broker */}
+          {/* BROKER */}
           <div className="bg-white rounded-2xl border p-4 mt-4">
             <h2 className="font-semibold text-gray-900">
               Contact Broker
@@ -326,38 +374,21 @@ export default async function PropertyPage({
             <p className="text-sm text-gray-900 mt-2">
               {property.broker_name || "Property Contact"}
             </p>
-
-            <div className="flex gap-3 mt-4">
-              {property.broker_phone && (
-                <a
-                  href={`tel:${property.broker_phone}`}
-                  className="flex-1 bg-blue-600 text-white text-center py-3 rounded-xl font-medium"
-                >
-                  📞 Call
-                </a>
-              )}
-
-              {property.broker_whatsapp && (
-                <a
-                  href={`https://wa.me/${String(
-                    property.broker_whatsapp
-                  ).replace(/\D/g, "")}?text=${encodeURIComponent(
-                    `Hey ${property.broker_name || "Property Contact"}, I want to visit the ${property.title} flat. Can you arrange the visit for me today?\n\nListing: ${listingUrl}`
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 bg-green-600 text-white text-center py-3 rounded-xl font-medium"
-                >
-                  💬 WhatsApp
-                </a>
-              )}
-            </div>
           </div>
 
-          {/* Bottom spacing */}
-          <div className="h-8" />
+          {/* SPACE FOR FIXED CONTACT BAR */}
+          <div className="h-24" />
         </div>
       </section>
+
+        {/* PROTECTED CONTACT ACTIONS */}
+        <ContactActions
+          propertyId={Number(property.id)}
+          phone={property.broker_phone || null}
+          whatsappUrl={whatsappUrl}
+          brokerWhatsapp={property.broker_whatsapp || null}
+          googleMapsUrl={googleMapsUrl}
+        />
     </main>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import CustomerLogin from "./components/CustomerLogin";
 
 type Property = {
   id: number;
@@ -123,6 +124,73 @@ export default function Home() {
   const [locationError, setLocationError] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [showBrandIntro, setShowBrandIntro] = useState(true);
+  const hasRestoredHomepageState = useRef(false);
+
+    const [showMapLogin, setShowMapLogin] = useState(false);
+  const [selectedMapUrl, setSelectedMapUrl] = useState<string | null>(
+    null
+  );
+
+  const handleMapClick = (url: string) => {
+    setSelectedMapUrl(url);
+    setShowMapLogin(true);
+  };
+
+  const handleMapVerified = () => {
+    if (selectedMapUrl) {
+      window.open(
+        selectedMapUrl,
+        "_blank",
+        "noopener,noreferrer"
+      );
+    }
+
+    setShowMapLogin(false);
+    setSelectedMapUrl(null);
+  };
+
+  const [showCustomerLogin, setShowCustomerLogin] = useState(false);
+  const [customerAuthenticated, setCustomerAuthenticated] =
+    useState(false);
+  const [customerName, setCustomerName] = useState("");
+
+  useEffect(() => {
+    const checkCustomerSession = async () => {
+      try {
+        const response = await fetch(
+          "/api/customer/session",
+          {
+            credentials: "include",
+          }
+        );
+
+        const result = await response.json();
+
+        setCustomerAuthenticated(
+          result?.authenticated === true
+        );
+      } catch (error) {
+        console.error(
+          "CUSTOMER SESSION CHECK ERROR:",
+          error
+        );
+
+        setCustomerAuthenticated(false);
+      }
+    };
+
+    checkCustomerSession();
+  }, []);
+
+  const handleCustomerVerified = (customer: {
+    id: string;
+    fullName: string;
+    phone: string;
+  }) => {
+    setCustomerAuthenticated(true);
+    setCustomerName(customer.fullName);
+    setShowCustomerLogin(false);
+  };
 
   const requestLocation = () => {
     if (!navigator.geolocation) {
@@ -152,11 +220,220 @@ export default function Home() {
   };
 
   useEffect(() => {
+    const introShown = window.sessionStorage.getItem(
+      "homeease-intro-shown"
+    );
+
+    if (introShown === "true") {
+      setShowBrandIntro(false);
+      return;
+    }
+
     const timer = window.setTimeout(() => {
       setShowBrandIntro(false);
+
+      try {
+        window.sessionStorage.setItem(
+          "homeease-intro-shown",
+          "true"
+        );
+      } catch (error) {
+        console.warn("HOMEEASE INTRO STORAGE ERROR:", error);
+      }
     }, 2100);
 
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const saved = window.sessionStorage.getItem(
+        "homeease-homepage-state"
+      );
+
+      if (!saved) {
+        hasRestoredHomepageState.current = true;
+        return;
+      }
+
+      const state = JSON.parse(saved);
+
+      if (typeof state.search === "string") {
+        setSearch(state.search);
+      }
+
+      if (
+        state.propertyTypeFilter === null ||
+        state.propertyTypeFilter === "Apartment" ||
+        state.propertyTypeFilter === "House" ||
+        state.propertyTypeFilter === "Villa" ||
+        state.propertyTypeFilter === "PG" ||
+        state.propertyTypeFilter === "Others"
+      ) {
+        setPropertyTypeFilter(state.propertyTypeFilter);
+      }
+
+      if (
+        state.bhkFilter === null ||
+        typeof state.bhkFilter === "number"
+      ) {
+        setBhkFilter(state.bhkFilter);
+      }
+
+      if (
+        state.listingFilter === null ||
+        state.listingFilter === "Rent" ||
+        state.listingFilter === "Sale"
+      ) {
+        setListingFilter(state.listingFilter);
+      }
+
+      if (
+        state.postedByFilter === null ||
+        state.postedByFilter === "Owner" ||
+        state.postedByFilter === "Broker"
+      ) {
+        setPostedByFilter(state.postedByFilter);
+      }
+
+      if (
+        state.sortBy === "newest" ||
+        state.sortBy === "nearest" ||
+        state.sortBy === "price_low" ||
+        state.sortBy === "price_high"
+      ) {
+        setSortBy(state.sortBy);
+      }
+
+      if (
+        state.userLocation &&
+        typeof state.userLocation.latitude === "number" &&
+        typeof state.userLocation.longitude === "number"
+      ) {
+        setUserLocation(state.userLocation);
+      }
+    } catch (error) {
+      console.warn(
+        "HOMEEASE STATE RESTORE ERROR:",
+        error
+      );
+    }
+
+    // Important:
+    // Enable saving only AFTER the initial saved state has
+    // been read, preventing default values from overwriting it.
+    window.requestAnimationFrame(() => {
+      hasRestoredHomepageState.current = true;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!hasRestoredHomepageState.current) {
+      return;
+    }
+
+    try {
+      window.sessionStorage.setItem(
+        "homeease-homepage-state",
+        JSON.stringify({
+          search,
+          propertyTypeFilter,
+          bhkFilter,
+          listingFilter,
+          postedByFilter,
+          sortBy,
+          userLocation,
+        })
+      );
+    } catch (error) {
+      console.warn(
+        "HOMEEASE STATE SAVE ERROR:",
+        error
+      );
+    }
+  }, [
+    search,
+    propertyTypeFilter,
+    bhkFilter,
+    listingFilter,
+    postedByFilter,
+    sortBy,
+    userLocation,
+  ]);
+
+  useEffect(() => {
+    if (loading || !hasRestoredHomepageState.current) {
+      return;
+    }
+
+    const savedScroll = window.sessionStorage.getItem(
+      "homeease-homepage-scroll"
+    );
+
+    if (!savedScroll) {
+      return;
+    }
+
+    const scrollY = Number(savedScroll);
+
+    if (!Number.isFinite(scrollY) || scrollY < 0) {
+      return;
+    }
+
+    // Wait until the homepage content has rendered.
+    const restoreScroll = () => {
+      window.scrollTo({
+        top: scrollY,
+        left: 0,
+        behavior: "instant",
+      });
+    };
+
+    const timer1 = window.setTimeout(restoreScroll, 100);
+    const timer2 = window.setTimeout(restoreScroll, 400);
+    const timer3 = window.setTimeout(restoreScroll, 800);
+
+    return () => {
+      window.clearTimeout(timer1);
+      window.clearTimeout(timer2);
+      window.clearTimeout(timer3);
+    };
+  }, [loading, search, propertyTypeFilter, bhkFilter, listingFilter, postedByFilter, sortBy]);
+
+  useEffect(() => {
+    let saveTimer: number | null = null;
+
+    const saveScrollPosition = () => {
+      if (saveTimer !== null) {
+        window.clearTimeout(saveTimer);
+      }
+
+      saveTimer = window.setTimeout(() => {
+        try {
+          window.sessionStorage.setItem(
+            "homeease-homepage-scroll",
+            String(window.scrollY)
+          );
+        } catch (error) {
+          console.warn(
+            "HOMEEASE SCROLL STORAGE ERROR:",
+            error
+          );
+        }
+      }, 100);
+    };
+
+    window.addEventListener("scroll", saveScrollPosition, {
+      passive: true,
+    });
+
+    return () => {
+      window.removeEventListener("scroll", saveScrollPosition);
+
+      if (saveTimer !== null) {
+        window.clearTimeout(saveTimer);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -261,6 +538,7 @@ export default function Home() {
 
     loadProperties();
   }, []);
+
 
   const filteredProperties = properties.filter((property) => {
     const searchText = search.trim().toLowerCase();
@@ -450,7 +728,7 @@ export default function Home() {
 
       <main className="min-h-screen bg-gray-50">
       <header className="bg-white border-b">
-        <div className="max-w-md mx-auto px-5 py-4 flex items-center justify-between">
+        <div className="w-full max-w-7xl mx-auto px-5 md:px-8 lg:px-10 py-4 flex items-center justify-between">
           <div>
             <h1 className="text-[28px] leading-none font-extrabold tracking-tight text-[#172033]">
               HomeEase
@@ -465,7 +743,26 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-3">
+            {customerAuthenticated ? (
+              <Link
+                href="/my-visits"
+                className="text-sm font-semibold text-blue-600"
+              >
+                {customerName
+                  ? `Hi, ${customerName.split(" ")[0]} 👋`
+                  : "My Visits"}
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowCustomerLogin(true)}
+                className="text-sm font-semibold text-blue-600"
+              >
+                Login / My Visits
+              </button>
+            )}
+
             <Link
               href="/admin"
               aria-label="Admin Login"
@@ -485,7 +782,7 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="max-w-md mx-auto px-5 py-6">
+      <section className="w-full max-w-7xl mx-auto px-5 md:px-8 lg:px-10 py-6 md:py-8">
         <div
           className={`w-full text-left bg-blue-50 rounded-2xl p-4 mb-5 ${
             locationError
@@ -545,7 +842,7 @@ export default function Home() {
           />
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-3">
+        <div className="flex gap-2 overflow-x-auto pb-3 md:flex-wrap">
           <select
             value={propertyTypeFilter ?? ""}
             onChange={(event) => {
@@ -607,7 +904,7 @@ export default function Home() {
           </select>
         </div>
 
-        <div className="flex items-center justify-between mt-5 mb-3 gap-3">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mt-5 mb-3 gap-3">
           <h2 className="font-semibold text-gray-900">
             Available Flats
           </h2>
@@ -705,10 +1002,10 @@ export default function Home() {
           {sortedProperties.map((property) => (
             <div
               key={property.id}
-              className="bg-white rounded-2xl overflow-hidden shadow-sm border"
+              className="bg-white rounded-2xl overflow-hidden shadow-sm border hover:shadow-md transition-shadow"
             >
               <Link href={`/property/${property.id}`}>
-                <div className="h-52 bg-gray-200 relative overflow-hidden">
+                <div className="h-52 md:h-56 bg-gray-200 relative overflow-hidden">
                   {property.photoUrl ? (
                     <img
                       src={property.photoUrl}
@@ -742,7 +1039,7 @@ export default function Home() {
                 </div>
               </Link>
 
-              <div className="p-4">
+              <div className="p-4 md:p-5">
                 <div className="flex justify-between items-start gap-3">
                   <div className="min-w-0">
                     <h3 className="font-semibold text-gray-900 truncate">
@@ -851,14 +1148,17 @@ export default function Home() {
                   <div className="flex gap-2">
                     {property.latitude != null &&
                       property.longitude != null && (
-                        <a
-                          href={`https://www.google.com/maps?q=${property.latitude},${property.longitude}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleMapClick(
+                              `https://www.google.com/maps?q=${property.latitude},${property.longitude}`
+                            )
+                          }
                           className="bg-gray-100 text-gray-700 px-3 py-2 rounded-xl text-sm font-medium"
                         >
                           📍 Map
-                        </a>
+                        </button>
                       )}
 
                     <Link
@@ -874,7 +1174,7 @@ export default function Home() {
           ))}
         </div>
 
-        <div className="bg-gray-900 text-white rounded-2xl p-5 mt-6 mb-8">
+        <div className="bg-gray-900 text-white rounded-2xl p-5 md:p-6 mt-6 mb-8">
           <h2 className="font-semibold text-lg">
             Have a flat available?
           </h2>
@@ -892,6 +1192,15 @@ export default function Home() {
         </div>
       </section>
       </main>
+      {showMapLogin && (
+        <CustomerLogin
+          onClose={() => {
+            setShowMapLogin(false);
+            setSelectedMapUrl(null);
+          }}
+          onVerified={handleMapVerified}
+        />
+      )}
     </>
   );
 }
