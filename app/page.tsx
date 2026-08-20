@@ -43,6 +43,7 @@ type PropertyVideo = {
 
 type PropertyWithPhoto = Property & {
   photoUrl: string | null;
+  videoUrl: string | null;
   photoCount: number;
   videoCount: number;
 };
@@ -546,13 +547,15 @@ const router = useRouter();
             );
 
             const firstPhoto = propertyPhotos[0];
+const firstVideo = propertyVideos[0];
 
-            return {
-              ...property,
-              photoUrl: firstPhoto?.photo_url || null,
-              photoCount: propertyPhotos.length,
-              videoCount: propertyVideos.length,
-            };
+return {
+  ...property,
+  photoUrl: firstPhoto?.photo_url || null,
+  videoUrl: firstVideo?.video_url || null,
+  photoCount: propertyPhotos.length,
+  videoCount: propertyVideos.length,
+};
           }
         );
 
@@ -1036,38 +1039,47 @@ const router = useRouter();
               className="bg-white rounded-2xl overflow-hidden shadow-sm border hover:shadow-md transition-shadow"
             >
               <Link href={`/property/${property.id}`}>
-                <div className="h-52 md:h-56 bg-gray-200 relative overflow-hidden">
-                  {property.photoUrl ? (
-                    <img
-                      src={property.photoUrl}
-                      alt={property.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-gray-400">
-                        No Photo
-                      </span>
-                    </div>
-                  )}
+              <div className="h-52 md:h-56 bg-gray-200 relative overflow-hidden">
+  {property.photoUrl ? (
+    <img
+      src={property.photoUrl}
+      alt={property.title}
+      className="w-full h-full object-cover"
+    />
+  ) : property.videoUrl ? (
+    <video
+      src={property.videoUrl}
+      className="w-full h-full object-cover"
+      muted
+      playsInline
+      autoPlay
+      loop
+    />
+  ) : (
+    <div className="w-full h-full flex items-center justify-center">
+      <span className="text-gray-400">
+        No Photo
+      </span>
+    </div>
+  )}
 
-                  {(property.photoCount > 0 ||
-                    property.videoCount > 0) && (
-                    <div className="absolute bottom-3 right-3 bg-black/70 text-white px-2.5 py-1 rounded-full text-xs flex items-center gap-2">
-                      {property.photoCount > 0 && (
-                        <span>
-                          📷 {property.photoCount}
-                        </span>
-                      )}
+  {(property.photoCount > 0 ||
+    property.videoCount > 0) && (
+    <div className="absolute bottom-3 right-3 bg-black/70 text-white px-2.5 py-1 rounded-full text-xs flex items-center gap-2">
+      {property.photoCount > 0 && (
+        <span>
+          📷 {property.photoCount}
+        </span>
+      )}
 
-                      {property.videoCount > 0 && (
-                        <span>
-                          🎥 {property.videoCount}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
+      {property.videoCount > 0 && (
+        <span>
+          🎥 {property.videoCount}
+        </span>
+      )}
+    </div>
+  )}
+</div>
               </Link>
 
               <div className="p-4 md:p-5">
@@ -1137,27 +1149,20 @@ const router = useRouter();
                 <div className="flex justify-between items-start mt-4 gap-3">
                   <div>
                     <p className="text-lg font-bold text-gray-900">
-                      ₹
-                      {(
-                        Number(property.price) +
-                        (property.listing_type === "Rent"
-                          ? Number(property.maintenance || 0)
-                          : 0)
-                      ).toLocaleString("en-IN")}
+  ₹
+  {(
+    Number(property.price) -
+    (property.listing_type === "Rent"
+      ? Number(property.maintenance || 0)
+      : 0)
+  ).toLocaleString("en-IN")}
 
-                      {property.listing_type === "Rent" && (
-                        <span className="text-xs font-normal text-gray-500">
-                          /month
-                        </span>
-                      )}
-                    </p>
-
-                    {property.listing_type === "Rent" &&
-                      Number(property.maintenance || 0) > 0 && (
-                        <p className="text-xs font-medium text-gray-600 -mt-1">
-                          *including Maintenance
-                        </p>
-                      )}
+  {property.listing_type === "Rent" && (
+    <span className="text-xs font-normal text-gray-500">
+      /month
+    </span>
+  )}
+</p>
 
                     {property.ad_type === "Broker" &&
                       property.brokerage_amount != null &&

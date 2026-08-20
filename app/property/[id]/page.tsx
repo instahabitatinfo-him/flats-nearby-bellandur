@@ -204,14 +204,22 @@ export default async function PropertyPage({
             </p>
 
             <p className="text-2xl font-bold text-gray-900 mt-1">
-              ₹{Number(property.price).toLocaleString("en-IN")}
+  ₹{Number(property.price).toLocaleString("en-IN")}
 
-              {property.listing_type === "Rent" && (
-                <span className="text-sm font-normal text-gray-500">
-                  /month
-                </span>
-              )}
-            </p>
+  {property.listing_type === "Rent" && (
+    <span className="text-sm font-normal text-gray-500">
+      /month
+    </span>
+  )}
+</p>
+
+{property.listing_type === "Rent" &&
+  Number(property.maintenance || 0) > 0 && (
+    <p className="text-sm font-medium text-gray-600 mt-1">
+      *including Maintenance (₹
+      {Number(property.maintenance).toLocaleString("en-IN")})
+    </p>
+  )}
           </div>
 
           {/* PROPERTY DETAILS */}
