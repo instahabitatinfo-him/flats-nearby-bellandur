@@ -871,110 +871,112 @@ const router = useRouter();
           />
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-3 md:flex-wrap">
-          <select
-            value={propertyTypeFilter ?? ""}
-            onChange={(event) => {
-              const value = event.target.value;
-
-              setPropertyTypeFilter(
-                value === "Apartment" ||
-                value === "House" ||
-                value === "Villa" ||
-                value === "PG" ||
-                value === "Others"
-                  ? value
-                  : null
-              );
-            }}
-            className="bg-white border rounded-lg px-3 py-2 text-sm text-gray-700"
-          >
-            <option value="">Property Type: All</option>
-            <option value="Apartment">Apartment</option>
-            <option value="House">House</option>
-            <option value="Villa">Villa</option>
-            <option value="PG">PG</option>
-            <option value="Others">Others</option>
-          </select>
-
-          <select
-            value={bhkFilter ?? ""}
-            onChange={(event) => {
-              const value = event.target.value;
-
-              setBhkFilter(value ? Number(value) : null);
-            }}
-            className="bg-white border rounded-lg px-3 py-2 text-sm text-gray-700"
-          >
-            <option value="">BHK: All</option>
-            <option value="1">1 BHK</option>
-            <option value="2">2 BHK</option>
-            <option value="3">3 BHK</option>
-            <option value="4">4 BHK</option>
-            <option value="5">5 BHK</option>
-          </select>
-
-          <select
-            value={listingFilter ?? ""}
-            onChange={(event) => {
-              const value = event.target.value;
-
-              setListingFilter(
-                value === "Rent" || value === "Sale"
-                  ? value
-                  : null
-              );
-            }}
-            className="bg-white border rounded-lg px-3 py-2 text-sm text-gray-700"
-          >
-            <option value="">Rent/Sale: All</option>
-            <option value="Rent">Rent</option>
-            <option value="Sale">Sale</option>
-          </select>
-        </div>
-
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mt-5 mb-3 gap-3">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between mt-5 mb-3 gap-2">
           <h2 className="font-semibold text-gray-900">
             Available Flats
           </h2>
 
-          <div className="flex items-center gap-2">
-            <select
-              value={postedByFilter ?? ""}
-              onChange={(event) => {
-                const value = event.target.value;
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-2 overflow-x-auto max-w-full">
+              <select
+                value={propertyTypeFilter ?? ""}
+                onChange={(event) => {
+                  const value = event.target.value;
 
-                setPostedByFilter(
-                  value === "Owner" || value === "Broker"
-                    ? value
-                    : null
-                );
-              }}
-              className="text-xs bg-white border rounded-lg px-2 py-2 text-gray-700"
-            >
-              <option value="">Posted by: All</option>
-              <option value="Owner">Posted by: Owner</option>
-              <option value="Broker">Posted by: Broker</option>
-            </select>
+                  setPropertyTypeFilter(
+                    value === "Apartment" ||
+                    value === "House" ||
+                    value === "Villa" ||
+                    value === "PG" ||
+                    value === "Others"
+                      ? value
+                      : null
+                  );
+                }}
+                className="text-xs bg-white border rounded-lg px-2 py-2 text-gray-700"
+              >
+                <option value="">Property Type: All</option>
+                <option value="Apartment">Apartment</option>
+                <option value="House">House</option>
+                <option value="Villa">Villa</option>
+                <option value="PG">PG</option>
+                <option value="Others">Others</option>
+              </select>
 
-            <select
-              value={sortBy}
-              onChange={(event) =>
-                setSortBy(
-                  event.target.value as
-                    | "newest"
-                    | "nearest"
-                    | "price_low"
-                    | "price_high"
-                )
-              }
-              className="text-xs bg-white border rounded-lg px-2 py-2 text-gray-700"
-            >
-              <option value="nearest">Nearest first</option>
-              <option value="newest">Newest</option>
-              <option value="price_low">Price: Low to High</option>
-              <option value="price_high">Price: High to Low</option>
-            </select>
+              <select
+                value={bhkFilter ?? ""}
+                onChange={(event) => {
+                  const value = event.target.value;
+
+                  setBhkFilter(value ? Number(value) : null);
+                }}
+                className="text-xs bg-white border rounded-lg px-2 py-2 text-gray-700"
+              >
+                <option value="">BHK: All</option>
+                <option value="1">1 BHK</option>
+                <option value="2">2 BHK</option>
+                <option value="3">3 BHK</option>
+                <option value="4">4 BHK</option>
+                <option value="5">5 BHK</option>
+              </select>
+
+              <select
+                value={listingFilter ?? ""}
+                onChange={(event) => {
+                  const value = event.target.value;
+
+                  setListingFilter(
+                    value === "Rent" || value === "Sale"
+                      ? value
+                      : null
+                  );
+                }}
+                className="text-xs bg-white border rounded-lg px-2 py-2 text-gray-700"
+              >
+                <option value="">Rent/Sale: All</option>
+                <option value="Rent">Rent</option>
+                <option value="Sale">Sale</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <select
+                value={postedByFilter ?? ""}
+                onChange={(event) => {
+                  const value = event.target.value;
+
+                  setPostedByFilter(
+                    value === "Owner" || value === "Broker"
+                      ? value
+                      : null
+                  );
+                }}
+                className="text-xs bg-white border rounded-lg px-2 py-2 text-gray-700"
+              >
+                <option value="">Posted by: All</option>
+                <option value="Owner">Posted by: Owner</option>
+                <option value="Broker">Posted by: Broker</option>
+              </select>
+
+              <select
+                value={sortBy}
+                onChange={(event) =>
+                  setSortBy(
+                    event.target.value as
+                      | "newest"
+                      | "nearest"
+                      | "price_low"
+                      | "price_high"
+                  )
+                }
+                className="text-xs bg-white border rounded-lg px-2 py-2 text-gray-700"
+              >
+                <option value="nearest">Nearest first</option>
+                <option value="newest">Newest</option>
+                <option value="price_low">Price: Low to High</option>
+                <option value="price_high">Price: High to Low</option>
+              </select>
+            </div>
           </div>
         </div>
 
