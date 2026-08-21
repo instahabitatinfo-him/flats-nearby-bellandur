@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   const token = process.env.MSG91_WIDGET_TOKEN;
+  const widgetId =
+    process.env.MSG91_WIDGET_ID ||
+    "3668736d7a50343935393230";
 
   if (!token) {
     console.error("MSG91 widget token is missing from environment");
@@ -14,7 +17,7 @@ export async function GET() {
 
   return NextResponse.json({
     configured: true,
-    widgetId: "3668736d7a50343935393230",
+    widgetId,
     token,
   });
 }

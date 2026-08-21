@@ -250,9 +250,18 @@ const router = useRouter();
   };
 
   useEffect(() => {
-    const introShown = window.sessionStorage.getItem(
-      "homeease-intro-shown"
-    );
+    let introShown = null;
+
+    try {
+      introShown = window.sessionStorage.getItem(
+        "homeease-intro-shown"
+      );
+    } catch (error) {
+      console.warn(
+        "HOMEEASE INTRO READ ERROR:",
+        error
+      );
+    }
 
     if (introShown === "true") {
       setShowBrandIntro(false);

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import CustomerLogin from "../../components/CustomerLogin";
 
 type ContactActionsProps = {
   propertyId: number;
@@ -18,45 +17,29 @@ export default function ContactActions({
   brokerWhatsapp,
   googleMapsUrl,
 }: ContactActionsProps) {
-  const [showLogin, setShowLogin] = useState(false);
   const [showVisitForm, setShowVisitForm] = useState(false);
   const [visitDate, setVisitDate] = useState("");
   const [visitTime, setVisitTime] = useState("");
 
-  const [selectedAction, setSelectedAction] = useState<
-    "call" | "whatsapp" | "visit" | null
-  >(null);
-
   const handleAction = async (
     action: "call" | "whatsapp"
   ) => {
-    setSelectedAction(action);
-
     try {
       await handleContact(action);
-
-      if (action === "call" && phone) {
-        window.location.href = `tel:${phone}`;
-        return;
-      }
-
-      if (action === "whatsapp" && whatsappUrl) {
-        window.location.href = whatsappUrl;
-        return;
-      }
     } catch (error) {
       console.error(
         "CONTACT ENQUIRY ERROR:",
         error
       );
+    }
 
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Unable to contact this property."
-      );
-    } finally {
-      setSelectedAction(null);
+    if (action === "call" && phone) {
+      window.location.href = `tel:${phone}`;
+      return;
+    }
+
+    if (action === "whatsapp" && whatsappUrl) {
+      window.location.href = whatsappUrl;
     }
   };
 
@@ -124,55 +107,6 @@ export default function ContactActions({
     }
 
     return result;
-  };
-
-  const handleVerified = async (customer: {
-    id: string;
-    fullName: string;
-    phone: string;
-  }) => {
-    if (!selectedAction) {
-      setShowLogin(false);
-      return;
-    }
-
-    try {
-      if (selectedAction === "visit") {
-        setShowLogin(false);
-        setShowVisitForm(true);
-        return;
-      }
-
-      await handleContact(selectedAction);
-
-      setShowLogin(false);
-
-      if (selectedAction === "call" && phone) {
-        window.location.href = `tel:${phone}`;
-        return;
-      }
-
-      if (
-        selectedAction === "whatsapp" &&
-        whatsappUrl
-      ) {
-        window.location.href = whatsappUrl;
-        return;
-      }
-    } catch (error) {
-      console.error(
-        "CONTACT ENQUIRY ERROR:",
-        error
-      );
-
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Unable to contact this property."
-      );
-    } finally {
-      setSelectedAction(null);
-    }
   };
 
   return (
@@ -336,15 +270,6 @@ export default function ContactActions({
         </div>
       )}
 
-      {showLogin && (
-        <CustomerLogin
-          onClose={() => {
-            setShowLogin(false);
-            setSelectedAction(null);
-          }}
-          onVerified={handleVerified}
-        />
-      )}
     </>
   );
 }

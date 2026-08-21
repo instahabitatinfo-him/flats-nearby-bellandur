@@ -128,9 +128,9 @@ export default async function VisitResponsePage({
           </Link>
 
           <Link
-            href={`/api/visit-response?token=${encodeURIComponent(
+            href={`/visit-response/${encodeURIComponent(
               token
-            )}&action=change`}
+            )}/change`}
             className="w-full bg-blue-600 text-white text-center py-3.5 rounded-xl font-semibold"
           >
             🔄 Change Time

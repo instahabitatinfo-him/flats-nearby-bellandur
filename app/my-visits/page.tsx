@@ -205,7 +205,7 @@ export default async function MyVisitsPage() {
           {visitEnquiries.length === 0 ? (
             <div className="mt-3 bg-white border rounded-2xl p-5">
               <p className="text-gray-600">
-                You don't have any visit requests yet.
+                You don&apos;t have any visit requests yet.
               </p>
 
               <Link

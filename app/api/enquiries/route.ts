@@ -137,7 +137,7 @@ async function sendVisitRequestWhatsApp(params: {
               button_1: {
                 type: "text",
                 subtype: "url",
-                value: params.ownerActionToken,
+                value: responseUrl,
               },
             },
           },
@@ -221,31 +221,15 @@ export async function POST(request: Request) {
       CUSTOMER_SESSION_COOKIE
     )?.value;
 
-    if (!sessionValue) {
-      return NextResponse.json(
-        {
-          error:
-            "Customer login required",
-        },
-        { status: 401 }
-      );
+    let customerUserId: string | null = null;
+
+    if (sessionValue) {
+      const session =
+        verifyCustomerSession(sessionValue);
+
+      customerUserId =
+        session?.customerId || null;
     }
-
-    const session =
-      verifyCustomerSession(sessionValue);
-
-    if (!session?.customerId) {
-      return NextResponse.json(
-        {
-          error:
-            "Customer session is invalid or expired",
-        },
-        { status: 401 }
-      );
-    }
-
-    const customerUserId =
-      session.customerId;
 
     const since = new Date(
       Date.now() - 12 * 60 * 60 * 1000
@@ -254,14 +238,16 @@ export async function POST(request: Request) {
     const {
       data: recentEnquiries,
       error: recentError,
-    } = await supabaseServer
-      .from("enquiries")
-      .select("property_id")
-      .eq(
-        "customer_user_id",
-        customerUserId
-      )
-      .gte("created_at", since);
+    } = customerUserId
+      ? await supabaseServer
+          .from("enquiries")
+          .select("property_id")
+          .eq(
+            "customer_user_id",
+            customerUserId
+          )
+          .gte("created_at", since)
+      : { data: [], error: null };
 
     if (recentError) {
       console.error(
